@@ -1,6 +1,7 @@
 /**
  * selectors.ts
  * CSS selector rule registry for every schema.
+ * Import SCHEMA_RULES and SCHEMA_DESCRIPTIONS from here.
  */
 
 export type FieldRule =
@@ -33,9 +34,12 @@ export const productRules: SchemaRules = {
     type: "number",
     selectors: [
       "p.price_color", ".price_color",
-      ".woocommerce-Price-amount", "#priceblock_ourprice",
-      "#priceblock_dealprice", ".price--main",
-      '[itemprop="price"]', ".product-price", ".price",
+      "p.price .woocommerce-Price-amount",
+      ".woocommerce-Price-amount.amount",
+      ".woocommerce-Price-amount",
+      "#priceblock_ourprice", "#priceblock_dealprice",
+      ".price--main", '[itemprop="price"]',
+      ".product-price", "p.price",
     ],
   },
   original_price: {
@@ -58,16 +62,19 @@ export const productRules: SchemaRules = {
       ".instock", ".instock.availability", ".stock",
       ".woocommerce-stock", "#availability",
       '[itemprop="availability"]', ".product-availability",
+      ".single_add_to_cart_button",
     ],
     trueValues: ["in stock", "instock", "available", "add to cart", "buy now"],
   },
   description: {
     type: "text",
     selectors: [
-      "article.product_page > p", "#product-description > p",
       "#tab-description p",
       ".woocommerce-product-details__short-description",
-      "#productDescription p", '[itemprop="description"]',
+      "article.product_page > p",
+      "#product-description > p",
+      "#productDescription p",
+      '[itemprop="description"]',
       ".product-description", ".product__description",
     ],
   },
@@ -140,7 +147,7 @@ export const articleRules: SchemaRules = {
     type: "text",
     selectors: [
       ".post-excerpt", '[itemprop="description"]',
-      "meta[name='description']", "article p:first-of-type",
+      "article p:first-of-type",
     ],
   },
   content: {
@@ -161,16 +168,7 @@ export const articleRules: SchemaRules = {
     limit: 10,
   },
 };
-content: {
-  selectors: [
-    "article .post-content",
-    ".entry-content",
-    "article p",
-    ".post-body",
-    "main article",
-  ],
-  extract: "text",
-},
+
 // ─── Job Listing ──────────────────────────────────────────────────────────────
 export const jobRules: SchemaRules = {
   title: {
@@ -214,41 +212,32 @@ export const jobRules: SchemaRules = {
 
 // ─── SaaS / AI Ideas — Ghost CMS + generic blogs ─────────────────────────────
 export const saasIdeasRules: SchemaRules = {
-  // Article title (single post) or site title (index)
   page_title: {
     type: "text",
     selectors: [
-      "h1.gh-article-title",         // Ghost single post
+      "h1.gh-article-title",
       "h1.article-title",
       "h1",
       "title",
     ],
   },
-  // Section headings inside an article = the actual ideas/topics
   ideas: {
     type: "list",
     selectors: [
-      ".gh-content h2",              // Ghost article body
-      ".gh-content h3",
-      ".post-content h2",
-      ".post-content h3",
-      "article .content h2",
-      "article .content h3",
-      ".gh-card-title",              // Ghost blog index cards
-      ".post-card-title",
+      ".gh-content h2", ".gh-content h3",
+      ".post-content h2", ".post-content h3",
+      "article .content h2", "article .content h3",
+      ".gh-card-title", ".post-card-title",
       ".article-card h2",
-      "article h2",
-      "article h3",
-      "main h2",
-      "main h3",
+      "article h2", "article h3",
+      "main h2", "main h3",
     ],
     limit: 30,
   },
-  // Article summary / excerpt
   summary: {
     type: "text",
     selectors: [
-      ".gh-article-excerpt",         // Ghost
+      ".gh-article-excerpt",
       ".post-card-excerpt",
       ".gh-content > p:first-of-type",
       ".post-content > p:first-of-type",
@@ -257,55 +246,39 @@ export const saasIdeasRules: SchemaRules = {
       "meta[name='description']",
     ],
   },
-  // Tags / categories on the article
   categories: {
     type: "list",
     selectors: [
-      ".gh-article-tag",             // Ghost single post tag
-      ".post-card-tags",             // Ghost index card tags
-      ".article-tag",
-      ".post-tag",
-      "a.tag",
-      ".tags a",
-      '[rel="tag"]',
-      ".category a",
-      ".label",
+      ".gh-article-tag", ".post-card-tags",
+      ".article-tag", ".post-tag",
+      "a.tag", ".tags a", '[rel="tag"]',
+      ".category a", ".label",
     ],
     limit: 10,
   },
-  // Author name
   author: {
     type: "text",
     selectors: [
-      ".gh-article-author-name",     // Ghost
-      ".author-name",
-      ".post-author-name",
-      '[itemprop="author"]',
-      '[rel="author"]',
-      ".byline",
-      ".author",
+      ".gh-article-author-name",
+      ".author-name", ".post-author-name",
+      '[itemprop="author"]', '[rel="author"]',
+      ".byline", ".author",
     ],
   },
-  // Publish date
   published_date: {
     type: "text",
     selectors: [
       "time[datetime]",
       ".gh-article-meta time",
-      ".post-date",
-      ".entry-date",
+      ".post-date", ".entry-date",
       '[itemprop="datePublished"]',
     ],
   },
-  // Code / tool names mentioned in article
   tools_mentioned: {
     type: "list",
     selectors: [
-      ".gh-content code",            // Ghost inline code = tool names
-      ".post-content code",
-      "article code",
-      ".kg-code-card code",
-      "code",
+      ".gh-content code", ".post-content code",
+      "article code", ".kg-code-card code", "code",
     ],
     limit: 20,
   },
