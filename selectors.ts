@@ -1,26 +1,13 @@
 /**
  * selectors.ts
- * CSS selector rule sets for traditional Cheerio-based extraction.
- *
- * Each rule set defines which CSS selectors to target per schema type.
- * Rules are tried in order — first non-empty result wins.
- *
- * This is the "traditional" extraction path — no AI, no tokens, instant.
- * Add your own rule sets for new site types here.
+ * CSS selector rule sets for Cheerio-based extraction.
  */
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export interface SelectorField {
-  /** Try these selectors in order, use first non-empty result */
   selectors: string[];
-  /** How to extract the value from matched element */
   extract?: "text" | "href" | "src" | "attr" | "html" | "number" | "boolean";
-  /** If extract is "attr", which attribute */
   attr?: string;
-  /** Extract multiple elements as an array instead of first match */
   multiple?: boolean;
-  /** Post-process the extracted string */
   transform?: (val: string) => unknown;
 }
 
@@ -31,136 +18,85 @@ export type SelectorSchema = Record<string, SelectorField>;
 export const productSelectors: SelectorSchema = {
   product_name: {
     selectors: [
-      "h1.product_title",
-      "h1[itemprop='name']",
-      ".product-title h1",
-      ".pdp-title",
-      "#productTitle",
-      "h1.title",
-      "h1",
+      "h1.product_title", "h1[itemprop='name']", ".product-title h1",
+      ".pdp-title", "#productTitle", "h1.title", "h1",
     ],
     extract: "text",
   },
   price: {
     selectors: [
-      ".price ins .amount",
-      ".woocommerce-Price-amount",
-      "span[itemprop='price']",
-      ".price-tag",
-      "#priceblock_ourprice",
-      ".a-price-whole",
-      "[data-price]",
-      "p.price_color",          // books.toscrape.com
-      ".price_color",           // books.toscrape.com
-      ".product-price",
-      "[class*='price']",
-      ".price",
+      ".price ins .amount", ".woocommerce-Price-amount", "span[itemprop='price']",
+      ".price-tag", "#priceblock_ourprice", ".a-price-whole", "[data-price]",
+      "p.price_color", ".price_color", ".product-price", "[class*='price']", ".price",
     ],
     extract: "text",
     transform: (v) => parseFloat(v.replace(/[^0-9.]/g, "")) || null,
   },
   original_price: {
-    selectors: [
-      ".price del .amount",
-      ".original-price",
-      ".price__compare",
-      "s.price",
-    ],
+    selectors: [".price del .amount", ".original-price", ".price__compare", "s.price"],
     extract: "text",
     transform: (v) => parseFloat(v.replace(/[^0-9.]/g, "")) || null,
   },
   in_stock: {
     selectors: [
-      ".instock",                    // books.toscrape: class="instock availability"
-      ".instock.availability",
-      ".stock",
-      ".availability",
-      "[itemprop='availability']",
-      ".product-availability",
-      "#availability",
+      ".instock", ".instock.availability", ".stock", ".availability",
+      "[itemprop='availability']", ".product-availability", "#availability",
     ],
     extract: "text",
     transform: (v) => !/(out of stock|unavailable|sold out)/i.test(v),
   },
   rating: {
     selectors: [
-      "[itemprop='ratingValue']",
-      ".average-rating",
-      ".product-rating",
-      ".star-rating",           // books.toscrape: class="star-rating Three"
-      "[class*='star-rating']",
+      "[itemprop='ratingValue']", ".average-rating", ".product-rating",
+      ".star-rating", "[class*='star-rating']",
     ],
     extract: "attr",
     attr: "class",
     transform: (v) => {
-      // books.toscrape style: "star-rating Three" → 3
       const wordMap: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5 };
       const match = v.toLowerCase().match(/\b(one|two|three|four|five)\b/);
       if (match) return wordMap[match[1]];
-      // numeric fallback
       const num = parseFloat(v);
       return isNaN(num) ? null : num;
     },
   },
   review_count: {
     selectors: [
-      ".woocommerce-review-link",
-      "[itemprop='reviewCount']",
-      ".review-count",
-      "#acrCustomerReviewText",
+      ".woocommerce-review-link", "[itemprop='reviewCount']",
+      ".review-count", "#acrCustomerReviewText",
     ],
     extract: "text",
     transform: (v) => parseInt(v.replace(/[^0-9]/g, ""), 10) || null,
   },
   description: {
     selectors: [
-      ".woocommerce-product-details__short-description",
-      "[itemprop='description']",
-      ".product-description",
-      "#productDescription",
-      "article.product_page > p",   // books.toscrape.com
-      ".product_main ~ p",
-      ".description p",
-      ".description",
+      ".woocommerce-product-details__short-description", "[itemprop='description']",
+      ".product-description", "#productDescription", "article.product_page > p",
+      ".product_main ~ p", ".description p", ".description",
     ],
     extract: "text",
   },
   sku: {
-    selectors: [
-      "[itemprop='sku']",
-      ".sku",
-      ".product-sku",
-      "#product-sku",
-    ],
+    selectors: ["[itemprop='sku']", ".sku", ".product-sku", "#product-sku"],
     extract: "text",
   },
   brand: {
-    selectors: [
-      "[itemprop='brand']",
-      ".brand",
-      ".product-brand",
-      "#bylineInfo",
-    ],
+    selectors: ["[itemprop='brand']", ".brand", ".product-brand", "#bylineInfo"],
     extract: "text",
   },
   images: {
     selectors: [
-      ".woocommerce-product-gallery img",
-      ".product-images img",
-      "[itemprop='image']",
-      ".product-image img",
+      ".woocommerce-product-gallery img", ".product-images img",
+      "[itemprop='image']", ".product-image img",
     ],
     extract: "src",
     multiple: true,
   },
   features: {
     selectors: [
-      ".woocommerce-product-details__short-description li",
-      "#feature-bullets li",
-      ".product-features li",
-      ".product-description li",
-      "table.table tr",              // books.toscrape product table rows
-      ".product_main ul li",
+      ".woocommerce-product-details__short-description li", "#feature-bullets li",
+      ".product-features li", ".product-description li",
+      "table.table tr", ".product_main ul li",
     ],
     extract: "text",
     multiple: true,
@@ -172,62 +108,52 @@ export const productSelectors: SelectorSchema = {
 export const articleSelectors: SelectorSchema = {
   title: {
     selectors: [
-      "h1.entry-title",
-      "h1.post-title",
-      "article h1",
-      "[itemprop='headline']",
-      "h1",
+      "h1.entry-title", "h1.post-title", "article h1",
+      "[itemprop='headline']", "h1",
     ],
     extract: "text",
   },
   author: {
     selectors: [
-      "[itemprop='author']",
-      ".author-name",
-      ".byline",
-      ".post-author",
-      "[rel='author']",
-      ".entry-author",
+      // Cloudflare blog
+      ".author-name", "[data-testid='author-name']", ".byline a",
+      // Generic
+      "[itemprop='author']", "[rel='author']", ".post-author",
+      ".entry-author", "span.author", ".byline",
     ],
     extract: "text",
   },
   published_date: {
     selectors: [
-      "[itemprop='datePublished']",
-      "time[datetime]",
-      ".post-date",
-      ".entry-date",
-      ".published",
+      // Cloudflare blog
+      "time[datetime]", ".post-date", "[data-testid='publish-date']",
+      // Generic
+      "[itemprop='datePublished']", "meta[property='article:published_time']",
+      ".entry-date", ".published",
     ],
     extract: "attr",
     attr: "datetime",
   },
   summary: {
     selectors: [
-      "[itemprop='description']",
-      "meta[name='description']",
-      ".post-excerpt",
-      ".entry-summary",
+      "[itemprop='description']", "meta[name='description']",
+      ".post-excerpt", ".entry-summary",
     ],
     extract: "attr",
     attr: "content",
   },
   tags: {
     selectors: [
-      ".post-tags a",
-      ".entry-tags a",
-      ".tags a",
-      "[rel='tag']",
+      ".post-tags a", ".article-tags a", ".entry-tags a",
+      ".tags a", "[rel='tag']", ".tag-list a",
     ],
     extract: "text",
     multiple: true,
   },
   key_points: {
     selectors: [
-      "article h2",
-      "article h3",
-      ".entry-content h2",
-      ".post-content h2",
+      "article h2", "article h3",
+      ".entry-content h2", ".post-content h2",
     ],
     extract: "text",
     multiple: true,
@@ -239,28 +165,21 @@ export const articleSelectors: SelectorSchema = {
 export const jobSelectors: SelectorSchema = {
   title: {
     selectors: [
-      "h1.job-title",
-      "[itemprop='title']",
-      ".posting-headline h2",
-      ".job-header h1",
-      "h1",
+      "h1.job-title", "[itemprop='title']", ".posting-headline h2",
+      ".job-header h1", "h1",
     ],
     extract: "text",
   },
   company: {
     selectors: [
-      "[itemprop='hiringOrganization']",
-      ".company-name",
-      ".employer-name",
-      ".posting-categories .sort-by-team",
+      "[itemprop='hiringOrganization']", ".company-name",
+      ".employer-name", ".posting-categories .sort-by-team",
     ],
     extract: "text",
   },
   location: {
     selectors: [
-      "[itemprop='jobLocation']",
-      ".location",
-      ".job-location",
+      "[itemprop='jobLocation']", ".location", ".job-location",
       ".posting-categories .sort-by-location",
     ],
     extract: "text",
@@ -272,19 +191,13 @@ export const jobSelectors: SelectorSchema = {
   },
   employment_type: {
     selectors: [
-      "[itemprop='employmentType']",
-      ".employment-type",
-      ".job-type",
-      ".posting-categories .sort-by-commitment",
+      "[itemprop='employmentType']", ".employment-type",
+      ".job-type", ".posting-categories .sort-by-commitment",
     ],
     extract: "text",
   },
   salary_min: {
-    selectors: [
-      "[itemprop='baseSalary']",
-      ".salary-range",
-      ".compensation",
-    ],
+    selectors: ["[itemprop='baseSalary']", ".salary-range", ".compensation"],
     extract: "text",
     transform: (v) => {
       const m = v.match(/[\$£€]?\s*([\d,]+)/);
@@ -293,72 +206,28 @@ export const jobSelectors: SelectorSchema = {
   },
   required_skills: {
     selectors: [
-      ".requirements li",
-      ".qualifications li",
-      ".skills li",
-      ".job-requirements li",
+      ".requirements li", ".qualifications li",
+      ".skills li", ".job-requirements li",
     ],
     extract: "text",
     multiple: true,
   },
   responsibilities: {
     selectors: [
-      ".responsibilities li",
-      ".role-description li",
-      ".job-description li",
+      ".responsibilities li", ".role-description li", ".job-description li",
     ],
     extract: "text",
     multiple: true,
   },
   posted_date: {
     selectors: [
-      "[itemprop='datePosted']",
-      "time[datetime]",
-      ".posted-date",
-      ".posting-date",
+      "[itemprop='datePosted']", "time[datetime]",
+      ".posted-date", ".posting-date",
     ],
     extract: "attr",
     attr: "datetime",
   },
 };
-
-author: {
-  selectors: [
-    // Cloudflare blog
-    ".author-name",
-    "[data-testid='author-name']",
-    ".byline a",
-    // Generic
-    "[rel='author']",
-    "[itemprop='author']",
-    ".post-author",
-    "span.author",
-  ],
-  extract: "text",
-},
-published_date: {
-  selectors: [
-    // Cloudflare blog
-    "time[datetime]",
-    ".post-date",
-    "[data-testid='publish-date']",
-    // Generic
-    "[itemprop='datePublished']",
-    "meta[property='article:published_time']",
-  ],
-  extract: "attr",
-  attr: "datetime",
-},
-tags: {
-  selectors: [
-    ".post-tags a",
-    ".article-tags a",
-    "[rel='tag']",
-    ".tag-list a",
-  ],
-  extract: "text",
-  multiple: true,
-},
 
 // ─── Pricing ──────────────────────────────────────────────────────────────────
 
@@ -368,7 +237,6 @@ export const pricingSelectors: SelectorSchema = {
     extract: "attr",
     attr: "content",
   },
-  // Pricing tiers need special handling — done in extractor
 };
 
 // ─── Review ───────────────────────────────────────────────────────────────────
@@ -376,26 +244,22 @@ export const pricingSelectors: SelectorSchema = {
 export const reviewSelectors: SelectorSchema = {
   overall_rating: {
     selectors: [
-      "[itemprop='ratingValue']",
-      ".overall-rating",
-      ".average-rating",
-      ".star-rating",
+      "[itemprop='ratingValue']", ".overall-rating",
+      ".average-rating", ".star-rating",
     ],
     extract: "text",
     transform: (v) => parseFloat(v) || null,
   },
   total_reviews: {
     selectors: [
-      "[itemprop='reviewCount']",
-      ".total-reviews",
-      ".review-count",
+      "[itemprop='reviewCount']", ".total-reviews", ".review-count",
     ],
     extract: "text",
     transform: (v) => parseInt(v.replace(/[^0-9]/g, ""), 10) || null,
   },
 };
 
-// ─── SaaS Ideas (generic blog/content selectors) ──────────────────────────────
+// ─── SaaS Ideas ───────────────────────────────────────────────────────────────
 
 export const saasIdeasSelectors: SelectorSchema = {
   page_topic: {
@@ -418,8 +282,7 @@ export const genericSelectors: SelectorSchema = {
   },
   description: {
     selectors: [
-      "meta[name='description']",
-      "meta[property='og:description']",
+      "meta[name='description']", "meta[property='og:description']",
     ],
     extract: "attr",
     attr: "content",
