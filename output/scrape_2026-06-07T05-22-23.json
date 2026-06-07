@@ -1,0 +1,12 @@
+{
+  "url": "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html",
+  "schema": "product",
+  "model": "cheerio",
+  "scrapedAt": "2026-06-07T05:22:23.079Z",
+  "data": {
+    "product_name": "A Light in the Attic",
+    "in_stock": true
+  },
+  "inputTokens": 0,
+  "outputTokens": 0
+}

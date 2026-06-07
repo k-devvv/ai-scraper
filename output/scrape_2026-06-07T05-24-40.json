@@ -1,0 +1,19 @@
+{
+  "url": "https://scrapeme.live/shop/Bulbasaur/",
+  "schema": "product",
+  "model": "cheerio",
+  "scrapedAt": "2026-06-07T05:24:40.622Z",
+  "data": {
+    "product_name": "Bulbasaur",
+    "in_stock": true,
+    "description": "Bulbasaur can be seen napping in bright sunlight. There is a seed on its back. By soaking up the sun’s rays, the seed grows progressively larger.",
+    "sku": "4391",
+    "images": [
+      "https://scrapeme.live/wp-content/uploads/2018/08/001.png"
+    ],
+    "price": 63,
+    "currency": "GBP"
+  },
+  "inputTokens": 0,
+  "outputTokens": 0
+}

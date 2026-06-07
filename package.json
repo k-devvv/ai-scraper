@@ -1,0 +1,42 @@
+{
+  "name": "ai-scraper",
+  "version": "3.0.0",
+  "description": "Production-grade scraper: Cheerio CSS + Network Intercept + Playwright Stealth + Ollama AI",
+  "scripts": {
+    "scrape": "npx tsx cli-v2.ts scrape",
+    "batch": "npx tsx cli-v2.ts batch",
+    "crawl": "npx tsx cli-v2.ts crawl",
+    "sitemap": "npx tsx cli-v2.ts sitemap",
+    "intercept": "npx tsx cli-v2.ts intercept",
+    "markdown": "npx tsx cli-v2.ts markdown",
+    "compare": "npx tsx cli-v2.ts compare",
+    "schemas": "npx tsx cli-v2.ts schemas",
+    "help": "npx tsx cli-v2.ts help",
+    "demo:product": "npx tsx cli-v2.ts scrape https://scrapeme.live/shop/Bulbasaur/ product",
+    "demo:pricing": "npx tsx cli-v2.ts scrape https://n8n.io/pricing pricing --output=json,csv",
+    "demo:intercept": "npx tsx cli-v2.ts intercept https://www.producthunt.com/topics/ai-agents --output=json",
+    "demo:crawl": "npx tsx cli-v2.ts crawl https://blog.n8n.io saas_ideas --pages=10 --output=json,csv",
+    "demo:sitemap": "npx tsx cli-v2.ts sitemap https://n8n.io saas_ideas --include=/blog/ --pages=15 --output=json,csv",
+    "demo:compare": "npx tsx cli-v2.ts compare https://scrapeme.live/shop/Bulbasaur/ product"
+  },
+  "dependencies": {
+    "axios": "^1.17.0",
+    "cheerio": "^1.2.0",
+    "dotenv": "^16.0.0",
+    "p-limit": "^5.0.0",
+    "p-retry": "^6.0.0",
+    "playwright": "^1.40.0",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "rebrowser-patches": "^1.0.19",
+    "turndown": "^7.1.2",
+    "turndown-plugin-gfm": "^1.0.2"
+  },
+  "devDependencies": {
+    "@types/cheerio": "^0.22.35",
+    "@types/node": "^20.0.0",
+    "@types/turndown": "^5.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

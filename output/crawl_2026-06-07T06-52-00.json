@@ -1,0 +1,1779 @@
+{
+  "seedUrl": "https://blog.cloudflare.com/tag/ai",
+  "totalPages": 10,
+  "successCount": 10,
+  "errorCount": 0,
+  "totalInputTokens": 0,
+  "totalOutputTokens": 0,
+  "durationMs": 9121,
+  "pages": [
+    {
+      "url": "https://blog.cloudflare.com/tag/ai",
+      "depth": 0,
+      "status": "success",
+      "data": {
+        "title": "AI",
+        "summary": "Get the latest news on how products at Cloudflare are built, technologies used, and open positions to join the teams helping to build a better Internet.",
+        "key_points": [
+          "Your AI bill is out of control. Cloudflare can fix it now.",
+          "VoidZero is joining Cloudflare",
+          "How we built Cloudflare's data platform and an AI agent on top of it",
+          "Announcing Claude Managed Agents on Cloudflare",
+          "Project Glasswing: what Mythos showed us"
+        ],
+        "headings": [
+          "Your AI bill is out of control. Cloudflare can fix it now.",
+          "VoidZero is joining Cloudflare",
+          "How we built Cloudflare's data platform and an AI agent on top of it",
+          "Announcing Claude Managed Agents on Cloudflare",
+          "Project Glasswing: what Mythos showed us",
+          "MORE POSTS"
+        ],
+        "paragraphs": [
+          "AI Gateway now features real-time spend limits to prevent runaway token bills across multiple AI providers. By integrating with Cloudflare Access, companies can use identity-driven budgets and policies....",
+          "VoidZero, the team behind Vite, Vitest, Rolldown, Oxc, and Vite+, is joining Cloudflare. Vite stays open source, vendor-agnostic, and built for everyone.\n...",
+          "Here’s how we built Town Lake, Cloudflare's unified analytics platform, alongside Skipper, an internal AI agent running on top of it....",
+          "Cloudflare has integrated with Anthropic's Claude Managed Agents to provide a fast, isolated execution environment for autonomous code delivery. This means builders can scale agent workflows globally while strictly controlling access to private backends and easily customizing their agent’s tools and runtimes....",
+          "In recent weeks, we pointed Mythos and other security-focused LLMs at live code across critical parts of our infrastructure. We share what we observed, the models’ strengths and weaknesses, and what the work around them needs to look like before any of it can scale....",
+          "Starting today, agents can now be Cloudflare customers. They can create a Cloudflare account, start a paid subscription, register a domain, and get back an API token to deploy code right away. Humans can be in the loop to grant permission, but there’s no need to go to the dashboa...",
+          "As AI assistants and privacy proxies challenge the capabilities of traditional bot detection, the Web needs new models for accountability. We believe that control should remain with the client, and that an open ecosystem of anonymous credentials is key to preserving user privacy ...",
+          "Agents Week 2026 is a wrap. Let’s take a look at everything we announced, from compute and security to the agent toolbox, platform tools, and the emerging agentic web. Everything we shipped for the agentic cloud.\n...",
+          "We built our internal AI engineering stack on the same products we ship. That means 20 million requests routed through AI Gateway, 241 billion tokens processed, and inference running on Workers AI, serving more than 3,683 internal users. Here's how we did it.\n...",
+          "Learn about how we built a CI-native AI code reviewer using OpenCode that helps our engineers ship better, safer code...."
+        ],
+        "lists": [
+          [
+            "Ming Lu",
+            "Kenny Johnson"
+          ],
+          [
+            "Evan You",
+            "Steve Faulkner"
+          ],
+          [
+            "Brian Brunner",
+            "Dmitry Alexeenko",
+            "Matt Moen"
+          ],
+          [
+            "Mike Nomitch"
+          ],
+          [
+            "Grant Bourzikas"
+          ],
+          [
+            "Sid Chatterjee",
+            ", Brendan Irvine-Broque"
+          ],
+          [
+            "Thibault Meunier"
+          ],
+          [
+            "Ming Lu",
+            ", Anni Wang"
+          ],
+          [
+            "Ayush Thakur",
+            ", Scott Roe-Meschke",
+            ", Rajesh Bhatia"
+          ],
+          [
+            "Ryan Skidmore"
+          ],
+          [
+            "André Jesus",
+            ", Vance Morrison"
+          ],
+          [
+            "Alex Krivit",
+            ", Edward Wang",
+            ", Sid Chunduri"
+          ],
+          [
+            "Cam Whiteside",
+            ", David Belson",
+            ", André Cruz"
+          ],
+          [
+            "Mari Galicer",
+            ", Ivan Nikulin",
+            ", Chris Branch"
+          ],
+          [
+            "Tyson Trautmann",
+            ", Rob Sutter"
+          ],
+          [
+            "Rohan Mukherjee",
+            ", Abhishek Kankani"
+          ],
+          [
+            "Ming Lu",
+            ", Michelle Chen"
+          ],
+          [
+            "Michelle Chen",
+            ", Kevin Flansburg",
+            ", Vlad Krasnov"
+          ],
+          [
+            "Gabriel Massadas",
+            ", Miguel Cardoso",
+            ", Anni Wang"
+          ],
+          [
+            "Thomas Gauvin",
+            ", Eric Falcão"
+          ]
+        ],
+        "links": [
+          {
+            "text": "Your AI bill is out of control. Cloudflare can fix it now.",
+            "href": "/ai-gateway-spend-limits/"
+          },
+          {
+            "text": "Continue reading »",
+            "href": "/ai-gateway-spend-limits/"
+          },
+          {
+            "text": "Ming Lu",
+            "href": "/author/ming-lu/"
+          },
+          {
+            "text": "Kenny Johnson",
+            "href": "/author/kenny/"
+          },
+          {
+            "text": "VoidZero is joining Cloudflare",
+            "href": "/voidzero-joins-cloudflare/"
+          },
+          {
+            "text": "Acquisitions",
+            "href": "/tag/acquisitions/"
+          },
+          {
+            "text": "Developers",
+            "href": "/tag/developers/"
+          },
+          {
+            "text": "Developer Platform",
+            "href": "/tag/developer-platform/"
+          },
+          {
+            "text": "Workers AI",
+            "href": "/tag/workers-ai/"
+          },
+          {
+            "text": "Vite",
+            "href": "/tag/vite/"
+          },
+          {
+            "text": "Evan You",
+            "href": "/author/evan-you/"
+          },
+          {
+            "text": "Steve Faulkner",
+            "href": "/author/steve-faulkner/"
+          },
+          {
+            "text": "How we built Cloudflare's data platform and an AI agent on top of it",
+            "href": "/our-unified-data-platform/"
+          },
+          {
+            "text": "Engineering",
+            "href": "/tag/engineering/"
+          },
+          {
+            "text": "Analytics",
+            "href": "/tag/analytics/"
+          },
+          {
+            "text": "Developers Storage",
+            "href": "/tag/developers-storage/"
+          },
+          {
+            "text": "Data Platform",
+            "href": "/tag/data-platform/"
+          },
+          {
+            "text": "Brian Brunner",
+            "href": "/author/brian-brunner/"
+          },
+          {
+            "text": "Dmitry Alexeenko",
+            "href": "/author/dmitry-alexeenko/"
+          },
+          {
+            "text": "Matt Moen",
+            "href": "/author/matt-moen/"
+          }
+        ],
+        "description": "Collection of Cloudflare blog posts tagged 'AI'"
+      },
+      "linksFound": 19,
+      "durationMs": 1666
+    },
+    {
+      "url": "https://blog.cloudflare.com/ai-gateway-spend-limits/",
+      "depth": 1,
+      "status": "success",
+      "data": {
+        "title": "Your AI bill is out of control. Cloudflare can fix it now.",
+        "summary": "AI Gateway now features real-time spend limits to prevent runaway token bills across multiple AI providers. By integrating with Cloudflare Access, companies can use identity-driven budgets and policies.",
+        "key_points": [
+          "VoidZero is joining Cloudflare",
+          "How we built Cloudflare's data platform and an AI agent on top of it",
+          "Announcing Claude Compliance API support with Cloudflare CASB",
+          "Announcing Claude Managed Agents on Cloudflare"
+        ],
+        "headings": [
+          "Your AI bill is out of control. Cloudflare can fix it now.",
+          "What AI Gateway is",
+          "Spend limits: budgets for AI usage",
+          "We use this ourselves",
+          "Identity-driven budgets and policies (closed beta)",
+          "What's next: from cost control to cost optimization",
+          "Get started",
+          "VoidZero is joining Cloudflare",
+          "How we built Cloudflare's data platform and an AI agent on top of it",
+          "Announcing Claude Compliance API support with Cloudflare CASB",
+          "Announcing Claude Managed Agents on Cloudflare"
+        ],
+        "paragraphs": [
+          "There isn't a CIO on the planet not worried about AI spend right now. CFOs are increasingly nervous, too.",
+          "For fear of falling behind, many companies have pushed their employees to use AI as aggressively as possible. The edict was clear: \"Move fast, we'll figure out the bill later.\" And for the most part, it worked: AI has been genuinely transformational for the teams that leaned in.",
+          "But the costs are real: we’ve heard countless horror stories of huge bills and painful overages on token spend.",
+          "Today, we're announcing spend controls in Cloudflare AI Gateway, and a closed beta for identity-driven budgets and routing using Cloudflare Access and your existing identity provider.",
+          "As we’ve spoken with hundreds of companies about their AI strategy, we’ve seen a common story:  The company gives every engineer access to frontier models through a shared API key. Usage takes off. At the end of the month, finance pulls the invoice and nobody can explain where the money went. Was it the machine learning team training a new pipeline? Was it an intern running Claude Opus on email triage? Was it a runaway continuous integration job that burned through 50 million tokens in a weekend? Nobody knows, because the API key doesn't tell you who used it.",
+          "Without guidelines, staff will generally reach for the biggest model available. And why wouldn't they? If there's no budget, no visibility, and no routing logic, the rational move is to use the most powerful model for everything. The problem is that most tasks don't need a frontier model. A code review summary doesn't need the same model as a complex architecture refactor. A log parser doesn't need the same model as a customer-facing content generator. It should be easy to select the right tool for the job, rather than defaulting to the most powerful and expensive one. And it should be simple to see where the spend is going.",
+          "You can't calculate ROI on your AI spend without visibility on what you're spending, and you can't protect that ROI without controls. Every other line item in a business has a budget and per-team attribution and AI spend should be no different.",
+          "AI Gateway sits between your applications and AI providers. Instead of calling OpenAI, Anthropic, Google, or any other provider directly, your requests route through AI Gateway first.",
+          "This immediately gives you several useful tools:",
+          "Unified billing to easily switch between different providers and models"
+        ],
+        "lists": [
+          [
+            "Ming Lu",
+            "Kenny Johnson"
+          ],
+          [
+            "Unified billing to easily switch between different providers and models",
+            "Logging across all providers — every request, token count, and cost in one place",
+            "Response caching",
+            "Rate limiting",
+            "Content guardrails and the ability to block Personally Identifiable Information (PII) and secrets before they reach the model"
+          ],
+          [
+            "Evan You,",
+            "Steve Faulkner"
+          ],
+          [
+            "Brian Brunner,",
+            "Dmitry Alexeenko,",
+            "Matt Moen"
+          ],
+          [
+            "Abe Carryl"
+          ],
+          [
+            "Mike Nomitch"
+          ]
+        ],
+        "links": [
+          {
+            "text": "Ming Lu",
+            "href": "/author/ming-lu/"
+          },
+          {
+            "text": "Kenny Johnson",
+            "href": "/author/kenny/"
+          },
+          {
+            "text": "AI Gateway",
+            "href": "https://developers.cloudflare.com/ai-gateway/"
+          },
+          {
+            "text": "Content guardrails",
+            "href": "https://developers.cloudflare.com/ai-gateway/features/guardrails/"
+          },
+          {
+            "text": "block Personally Identifiable Information (PII) and secrets",
+            "href": "https://developers.cloudflare.com/ai-gateway/features/dlp/"
+          },
+          {
+            "text": "spend limits",
+            "href": "https://developers.cloudflare.com/ai-gateway/features/spend-limits"
+          },
+          {
+            "text": "Dynamic Routes",
+            "href": "https://developers.cloudflare.com/ai-gateway/features/dynamic-routing/"
+          },
+          {
+            "text": "Cloudflare Access",
+            "href": "https://developers.cloudflare.com/cloudflare-one/"
+          },
+          {
+            "text": "CI/CD",
+            "href": "https://www.cloudflare.com/learning/serverless/glossary/what-is-ci-cd/"
+          },
+          {
+            "text": "Access service tokens",
+            "href": "https://developers.cloudflare.com/cloudflare-one/access-controls/service-credentials/service-tokens/"
+          },
+          {
+            "text": "how we built our internal AI engineering stack",
+            "href": "https://blog.cloudflare.com/internal-ai-engineering-stack/"
+          },
+          {
+            "text": "sign up here",
+            "href": "https://www.cloudflare.com/lp/ai-gateway-identity-aware-endpoints-beta/"
+          },
+          {
+            "text": "developer docs",
+            "href": "https://developers.cloudflare.com/ai-gateway/"
+          },
+          {
+            "text": "changelog",
+            "href": "https://developers.cloudflare.com/ai-gateway/changelog/"
+          },
+          {
+            "text": "create a gateway",
+            "href": "https://developers.cloudflare.com/ai-gateway/get-started/"
+          },
+          {
+            "text": "sign up",
+            "href": "https://www.cloudflare.com/lp/ai-gateway-identity-aware-endpoints-beta/"
+          },
+          {
+            "text": "Cloudflare Community",
+            "href": "https://community.cloudflare.com/"
+          },
+          {
+            "text": "reach out",
+            "href": "https://www.cloudflare.com/ai-security/"
+          },
+          {
+            "text": "AI Gateway",
+            "href": "/tag/ai-gateway/"
+          },
+          {
+            "text": "Cloudflare Access",
+            "href": "/tag/cloudflare-access/"
+          }
+        ],
+        "description": "AI Gateway now features real-time spend limits to prevent runaway token bills across multiple AI providers. By integrating with Cloudflare Access, companies can use identity-driven budgets and policies.",
+        "images": [
+          "https://cf-assets.www.cloudflare.com/zkvhlag99gkb/10aPjUkoN4qtMrhmFvJXjU/39e514a0d40f1059d73c342e15c4ab5a/Your_AI_bill_is_out_of_control._Cloudflare_can_fix_it_now._-OG.png"
+        ]
+      },
+      "linksFound": 3,
+      "durationMs": 910
+    },
+    {
+      "url": "https://blog.cloudflare.com/author/ming-lu/",
+      "depth": 1,
+      "status": "success",
+      "data": {
+        "title": "Ming Lu",
+        "summary": "Get the latest news on how products at Cloudflare are built, technologies used, and open positions to join the teams helping to build a better Internet.",
+        "key_points": [
+          "Your AI bill is out of control. Cloudflare can fix it now.",
+          "Building the agentic cloud: everything we launched during Agents Week 2026",
+          "Cloudflare’s AI Platform: an inference layer designed for agents"
+        ],
+        "headings": [
+          "Ming Lu",
+          "Your AI bill is out of control. Cloudflare can fix it now.",
+          "Building the agentic cloud: everything we launched during Agents Week 2026",
+          "Cloudflare’s AI Platform: an inference layer designed for agents"
+        ],
+        "paragraphs": [
+          "AI Gateway now features real-time spend limits to prevent runaway token bills across multiple AI providers. By integrating with Cloudflare Access, companies can use identity-driven budgets and policies....",
+          "Agents Week 2026 is a wrap. Let’s take a look at everything we announced, from compute and security to the agent toolbox, platform tools, and the emerging agentic web. Everything we shipped for the agentic cloud.\n...",
+          "We're building AI Gateway into a unified inference layer for AI, letting developers call models from 14+ providers. New features include Workers AI binding integration and an expanded catalog with multimodal models.\n..."
+        ],
+        "lists": [
+          [
+            "Ming Lu",
+            "Kenny Johnson"
+          ],
+          [
+            "Ming Lu",
+            "Anni Wang"
+          ],
+          [
+            "Ming Lu",
+            "Michelle Chen"
+          ]
+        ],
+        "links": [
+          {
+            "text": "Your AI bill is out of control. Cloudflare can fix it now.",
+            "href": "/ai-gateway-spend-limits/"
+          },
+          {
+            "text": "AI Gateway",
+            "href": "/tag/ai-gateway/"
+          },
+          {
+            "text": "Cloudflare Access",
+            "href": "/tag/cloudflare-access/"
+          },
+          {
+            "text": "Developers",
+            "href": "/tag/developers/"
+          },
+          {
+            "text": "Developer Platform",
+            "href": "/tag/developer-platform/"
+          },
+          {
+            "text": "Ming Lu",
+            "href": "/author/ming-lu/"
+          },
+          {
+            "text": "Kenny Johnson",
+            "href": "/author/kenny/"
+          },
+          {
+            "text": "Building the agentic cloud: everything we launched during Agents Week 2026",
+            "href": "/agents-week-in-review/"
+          },
+          {
+            "text": "Agents Week",
+            "href": "/tag/agents-week/"
+          },
+          {
+            "text": "Agents",
+            "href": "/tag/agents/"
+          },
+          {
+            "text": "Durable Objects",
+            "href": "/tag/durable-objects/"
+          },
+          {
+            "text": "Cloudflare Workers",
+            "href": "/tag/workers/"
+          },
+          {
+            "text": "SDK",
+            "href": "/tag/sdk/"
+          },
+          {
+            "text": "Browser Run",
+            "href": "/tag/browser-run/"
+          },
+          {
+            "text": "Cloudflare Access",
+            "href": "/tag/cloudflare-access/"
+          },
+          {
+            "text": "Browser Rendering",
+            "href": "/tag/browser-rendering/"
+          },
+          {
+            "text": "MCP",
+            "href": "/tag/mcp/"
+          },
+          {
+            "text": "Developer Platform",
+            "href": "/tag/developer-platform/"
+          },
+          {
+            "text": "Developers",
+            "href": "/tag/developers/"
+          },
+          {
+            "text": "Sandbox",
+            "href": "/tag/sandbox/"
+          }
+        ],
+        "description": "Get the latest news on how products at Cloudflare are built, technologies used, and join the teams helping to build a better Internet."
+      },
+      "linksFound": 7,
+      "durationMs": 919
+    },
+    {
+      "url": "https://blog.cloudflare.com/author/kenny/",
+      "depth": 1,
+      "status": "success",
+      "data": {
+        "title": "Kenny Johnson",
+        "summary": "Get the latest news on how products at Cloudflare are built, technologies used, and open positions to join the teams helping to build a better Internet.",
+        "key_points": [
+          "Your AI bill is out of control. Cloudflare can fix it now.",
+          "AI Week 2025: Recap",
+          "Securing the AI Revolution: Introducing Cloudflare MCP Server Portals",
+          "Welcome to AI Week 2025",
+          "Improved support for private applications and reusable access policies with Cloudflare Access",
+          "Cloudflare acquires BastionZero to extend Zero Trust access to IT infrastructure",
+          "Introducing advanced session audit capabilities in Cloudflare One",
+          "Introducing HAR Sanitizer: secure HAR sharing",
+          "Wildcard and multi-domain support in Cloudflare Access",
+          "Introducing custom pages for Cloudflare Access",
+          "Zero Trust security with Ping Identity and Cloudflare Access",
+          "Using Cloudflare Access with CNI",
+          "Cloudflare incident on January 24, 2023",
+          "Announcing SCIM support for Cloudflare Access & Gateway",
+          "Expanding our Microsoft collaboration: proactive and automated Zero Trust security for customers",
+          "One-click data security for your internal and SaaS applications",
+          "New ways to troubleshoot Cloudflare Access 'blocked' messages",
+          "Verify Apple devices with no installed software",
+          "Cloudflare recognized by Microsoft as a Security Software Innovator",
+          "Infinitely extensible Access policies"
+        ],
+        "headings": [
+          "Kenny Johnson",
+          "Your AI bill is out of control. Cloudflare can fix it now.",
+          "AI Week 2025: Recap",
+          "Securing the AI Revolution: Introducing Cloudflare MCP Server Portals",
+          "Welcome to AI Week 2025",
+          "Improved support for private applications and reusable access policies with Cloudflare Access",
+          "Cloudflare acquires BastionZero to extend Zero Trust access to IT infrastructure",
+          "Introducing advanced session audit capabilities in Cloudflare One",
+          "Introducing HAR Sanitizer: secure HAR sharing",
+          "Wildcard and multi-domain support in Cloudflare Access",
+          "Introducing custom pages for Cloudflare Access",
+          "Zero Trust security with Ping Identity and Cloudflare Access",
+          "Using Cloudflare Access with CNI",
+          "Cloudflare incident on January 24, 2023",
+          "Announcing SCIM support for Cloudflare Access & Gateway",
+          "Expanding our Microsoft collaboration: proactive and automated Zero Trust security for customers",
+          "One-click data security for your internal and SaaS applications",
+          "New ways to troubleshoot Cloudflare Access 'blocked' messages",
+          "Verify Apple devices with no installed software",
+          "Cloudflare recognized by Microsoft as a Security Software Innovator",
+          "Infinitely extensible Access policies"
+        ],
+        "paragraphs": [
+          "AI Gateway now features real-time spend limits to prevent runaway token bills across multiple AI providers. By integrating with Cloudflare Access, companies can use identity-driven budgets and policies....",
+          "How do we embrace the power of AI without losing control? That was one of our big themes for AI Week 2025. Check out all of the products, partnerships, and features we announced....",
+          "Cloudflare MCP Server Portals are now available in Open Beta. MCP Server Portals are a new capability that enable you to centralize, secure, and observe every MCP connection in your organization....",
+          "We’re seeing AI fundamentally change how people work across every industry. Customer support agents can respond to ten times the tickets. Software engineers are reviewers of AI generated code instead...",
+          "We are excited to introduce support for private hostname and IP address-defined applications as well as reusable access policies.\n...",
+          "We’re excited to announce that BastionZero, a Zero Trust infrastructure access platform, has joined Cloudflare. This acquisition extends our Zero Trust Network Access (ZTNA) flows with native access management for infrastructure like servers, Kubernetes clusters, and databases...",
+          "Administrators can now easily audit all active user sessions and associated data used by their Cloudflare One policies. This enables the best of both worlds: extremely granular controls, while maintaining an improved ability to troubleshoot and diagnose...",
+          "As a follow-up to the most recent Okta breach, we are making a HAR file sanitizer available to everyone, not just Cloudflare customers, at no cost....",
+          "We are thrilled to announce the full support of wildcard and multi-hostname application definitions in Cloudflare Access...",
+          "As more users start their day with Cloudflare Access, we’re excited to announce new options to customize how those users experience our industry-leading Zero Trust solution. We’re excited to announce customizable Cloudflare Access pages including login, blocks and the application launcher..."
+        ],
+        "lists": [
+          [
+            "Ming Lu",
+            "Kenny Johnson"
+          ],
+          [
+            "Kenny Johnson",
+            "James Allworth"
+          ],
+          [
+            "Kenny Johnson"
+          ],
+          [
+            "Kenny Johnson",
+            "James Allworth"
+          ],
+          [
+            "Kenny Johnson",
+            "Eduardo Gomes"
+          ],
+          [
+            "Kenny Johnson",
+            "Michael Keane"
+          ],
+          [
+            "Kenny Johnson"
+          ],
+          [
+            "Kenny Johnson"
+          ],
+          [
+            "Kenny Johnson"
+          ],
+          [
+            "Kenny Johnson"
+          ],
+          [
+            "Deeksha Lamba",
+            "Kenny Johnson",
+            "Peter Holko (Guest Author)"
+          ],
+          [
+            "David Tuber",
+            "Kenny Johnson"
+          ],
+          [
+            "Kenny Johnson",
+            "Sam Rhea"
+          ],
+          [
+            "Kenny Johnson",
+            "Ankur Aggarwal"
+          ],
+          [
+            "Abhi Das",
+            "Mythili Prabhu",
+            "Kenny Johnson"
+          ],
+          [
+            "Tim Obezuk",
+            "Kenny Johnson"
+          ],
+          [
+            "Kenny Johnson"
+          ],
+          [
+            "Kenny Johnson"
+          ],
+          [
+            "Abhi Das",
+            "Kenny Johnson"
+          ],
+          [
+            "Kenny Johnson",
+            "James Royal"
+          ]
+        ],
+        "links": [
+          {
+            "text": "Your AI bill is out of control. Cloudflare can fix it now.",
+            "href": "/ai-gateway-spend-limits/"
+          },
+          {
+            "text": "AI Gateway",
+            "href": "/tag/ai-gateway/"
+          },
+          {
+            "text": "Cloudflare Access",
+            "href": "/tag/cloudflare-access/"
+          },
+          {
+            "text": "Developers",
+            "href": "/tag/developers/"
+          },
+          {
+            "text": "Developer Platform",
+            "href": "/tag/developer-platform/"
+          },
+          {
+            "text": "Ming Lu",
+            "href": "/author/ming-lu/"
+          },
+          {
+            "text": "Kenny Johnson",
+            "href": "/author/kenny/"
+          },
+          {
+            "text": "AI Week 2025: Recap",
+            "href": "/ai-week-2025-wrapup/"
+          },
+          {
+            "text": "AI Week",
+            "href": "/tag/ai-week/"
+          },
+          {
+            "text": "AI Gateway",
+            "href": "/tag/ai-gateway/"
+          },
+          {
+            "text": "Generative AI",
+            "href": "/tag/generative-ai/"
+          },
+          {
+            "text": "Workers AI",
+            "href": "/tag/workers-ai/"
+          },
+          {
+            "text": "AI WAF",
+            "href": "/tag/ai-waf/"
+          },
+          {
+            "text": "AI Bots",
+            "href": "/tag/ai-bots/"
+          },
+          {
+            "text": "Kenny Johnson",
+            "href": "/author/kenny/"
+          },
+          {
+            "text": "James Allworth",
+            "href": "/author/james-allworth/"
+          },
+          {
+            "text": "Securing the AI Revolution: Introducing Cloudflare MCP Server Portals",
+            "href": "/zero-trust-mcp-server-portals/"
+          },
+          {
+            "text": "AI Week",
+            "href": "/tag/ai-week/"
+          },
+          {
+            "text": "MCP",
+            "href": "/tag/mcp/"
+          },
+          {
+            "text": "Kenny Johnson",
+            "href": "/author/kenny/"
+          }
+        ],
+        "description": "Get the latest news on how products at Cloudflare are built, technologies used, and join the teams helping to build a better Internet."
+      },
+      "linksFound": 0,
+      "durationMs": 724
+    },
+    {
+      "url": "https://blog.cloudflare.com/voidzero-joins-cloudflare/",
+      "depth": 1,
+      "status": "success",
+      "data": {
+        "title": "VoidZero is joining Cloudflare",
+        "summary": "VoidZero, the team behind Vite, Vitest, Rolldown, Oxc, and Vite+, is joining Cloudflare. Vite stays open source, vendor-agnostic, and built for everyone.\n",
+        "key_points": [
+          "Your AI bill is out of control. Cloudflare can fix it now.",
+          "How we built Cloudflare's data platform and an AI agent on top of it",
+          "Announcing Claude Compliance API support with Cloudflare CASB",
+          "Announcing Claude Managed Agents on Cloudflare"
+        ],
+        "headings": [
+          "VoidZero is joining Cloudflare",
+          "What this means for Vite",
+          "Vite as the foundation",
+          "AI is changing how we write software",
+          "Vite is becoming full-stack",
+          "Moving Cloudflare toward Vite",
+          "What happens next",
+          "Welcome VoidZero",
+          "Your AI bill is out of control. Cloudflare can fix it now.",
+          "How we built Cloudflare's data platform and an AI agent on top of it",
+          "Announcing Claude Compliance API support with Cloudflare CASB",
+          "Announcing Claude Managed Agents on Cloudflare"
+        ],
+        "paragraphs": [
+          "VoidZero, the company behind Vite, Vitest, Rolldown, Oxc, and Vite+, is joining Cloudflare. As part of this change, all team members of VoidZero are joining Cloudflare, too.",
+          "Before saying anything else, we want to make the most important thing clear: Vite, Vitest, Rolldown, Oxc, and Vite+ will stay open source, vendor-agnostic, and community-driven. Nothing about that changes.",
+          "Cloudflare's mission is to help build a better Internet. And a better Internet is an open Internet. Developers need choice, frameworks need a neutral foundation, and applications need to be portable. It is not reasonable to expect the entire web ecosystem to build around a single vendor. The most important tools and frameworks are portable by design.",
+          "Vite is one of the few foundational tools that the whole JavaScript ecosystem agrees on. It earned that position by being fast, excellent, portable, and vendor-neutral. One of the best ways Cloudflare can help build a better Internet is by investing in that foundational open source toolchain. A toolchain that makes the Internet better for everyone, not just people who use Cloudflare or choose to host with us.",
+          "Over the last few years we've invested heavily in making Cloudflare the best place to build and run websites, applications, and agents on our developer platform. But ultimately that choice will always be yours. Run your Vite application anywhere you want.",
+          "Today's news gives Vite more resources to keep growing, while the things that make Vite what it is remain the same:",
+          "Vite remains MIT-licensed and open source.",
+          "Vite remains vendor-agnostic. Applications built with Vite run anywhere and will continue to do so.",
+          "Vite's roadmap continues to be driven by the broader Vite team and community, and continues to be developed in the open.",
+          "Evan and the rest of the VoidZero team continue to lead Vite, Vitest, Rolldown, Oxc, and Vite+."
+        ],
+        "lists": [
+          [
+            "Evan You",
+            "Steve Faulkner"
+          ],
+          [
+            "Vite remains MIT-licensed and open source.",
+            "Vite remains vendor-agnostic. Applications built with Vite run anywhere and will continue to do so.",
+            "Vite's roadmap continues to be driven by the broader Vite team and community, and continues to be developed in the open.",
+            "Evan and the rest of the VoidZero team continue to lead Vite, Vitest, Rolldown, Oxc, and Vite+.",
+            "Cloudflare is committing engineering and resources to those projects, not redirecting them."
+          ],
+          [
+            "Fast builds, because they iterate more than humans do.",
+            "Fast tests, because they re-run the suite constantly to verify their own work.",
+            "Fast linting and formatting, because those tools become guardrails.",
+            "Clear, structured errors, because the agent has to read and act on them.",
+            "Consistent CLIs, because small inconsistencies cause big detours."
+          ],
+          [
+            "cf dev should be a superset of vite dev. Same speed, same hot module replacement, same plugin model, plus the Cloudflare runtime and bindings when you want them.",
+            "cf build should understand Vite projects natively, without an adapter dance.",
+            "cf deploy should make deploying a Vite app to Cloudflare simple."
+          ],
+          [
+            "Vite, Vitest, Rolldown, Oxc, and Vite+ keep shipping. The VoidZero team keeps contributing and leading them.",
+            "The Cloudflare Vite plugin keeps improving.",
+            "The Environment API and the broader story of \"run your server code in the right runtime locally\" keeps getting better, including for non-Cloudflare runtimes."
+          ],
+          [
+            "We start the work on moving the Cloudflare CLI toward an experience built directly on top of Vite.",
+            "Vite will get new, clean, provider-agnostic primitives for full-stack apps and agents that work for everyone on any platform.",
+            "Over time, we intend to open-source the Void platform, so others can learn from it and build their own platforms on top of Vite and Cloudflare."
+          ],
+          [
+            "Ming Lu,",
+            "Kenny Johnson"
+          ],
+          [
+            "Brian Brunner,",
+            "Dmitry Alexeenko,",
+            "Matt Moen"
+          ],
+          [
+            "Abe Carryl"
+          ],
+          [
+            "Mike Nomitch"
+          ]
+        ],
+        "links": [
+          {
+            "text": "Evan You",
+            "href": "/author/evan-you/"
+          },
+          {
+            "text": "Steve Faulkner",
+            "href": "/author/steve-faulkner/"
+          },
+          {
+            "text": "Vite",
+            "href": "https://vite.dev/"
+          },
+          {
+            "text": "Vitest",
+            "href": "https://vitest.dev/"
+          },
+          {
+            "text": "Rolldown",
+            "href": "https://rolldown.rs/"
+          },
+          {
+            "text": "Oxc",
+            "href": "https://oxc.rs/"
+          },
+          {
+            "text": "Vite+",
+            "href": "https://voidzero.dev/posts/announcing-vite-plus-alpha/"
+          },
+          {
+            "text": "developer platform",
+            "href": "https://www.cloudflare.com/developer-platform/"
+          },
+          {
+            "text": "Astro joined Cloudflare",
+            "href": "https://blog.cloudflare.com/astro-joins-cloudflare/"
+          },
+          {
+            "text": "Vue",
+            "href": "https://vuejs.org/"
+          },
+          {
+            "text": "SvelteKit",
+            "href": "https://svelte.dev/docs/kit/introduction"
+          },
+          {
+            "text": "Nuxt",
+            "href": "https://nuxt.com/"
+          },
+          {
+            "text": "Astro",
+            "href": "https://astro.build/"
+          },
+          {
+            "text": "Solid",
+            "href": "https://www.solidjs.com/"
+          },
+          {
+            "text": "Qwik",
+            "href": "https://qwik.dev/"
+          },
+          {
+            "text": "Angular",
+            "href": "https://angular.dev/"
+          },
+          {
+            "text": "React Router",
+            "href": "https://reactrouter.com/"
+          },
+          {
+            "text": "TanStack Start",
+            "href": "https://tanstack.com/start"
+          },
+          {
+            "text": "Next.js",
+            "href": "https://nextjs.org/"
+          },
+          {
+            "text": "vinext",
+            "href": "https://blog.cloudflare.com/vinext/"
+          }
+        ],
+        "description": "VoidZero, the team behind Vite, Vitest, Rolldown, Oxc, and Vite+, is joining Cloudflare. Vite stays open source, vendor-agnostic, and built for everyone.\n",
+        "images": [
+          "https://cf-assets.www.cloudflare.com/zkvhlag99gkb/77PFBBDzFzIVtsPi4GXm5g/ea71873167012a47518dc593033032c6/BLOG-VOID_OG.png"
+        ]
+      },
+      "linksFound": 0,
+      "durationMs": 663
+    },
+    {
+      "url": "https://blog.cloudflare.com/tag/acquisitions/",
+      "depth": 1,
+      "status": "success",
+      "data": {
+        "title": "Acquisitions",
+        "summary": "Get the latest news on how products at Cloudflare are built, technologies used, and open positions to join the teams helping to build a better Internet.",
+        "key_points": [
+          "VoidZero is joining Cloudflare",
+          "Astro is joining Cloudflare",
+          "Human Native is joining Cloudflare",
+          "Why Replicate is joining Cloudflare",
+          "Replicate is joining Cloudflare"
+        ],
+        "headings": [
+          "Acquisitions",
+          "VoidZero is joining Cloudflare",
+          "Astro is joining Cloudflare",
+          "Human Native is joining Cloudflare",
+          "Why Replicate is joining Cloudflare",
+          "Replicate is joining Cloudflare",
+          "MORE POSTS"
+        ],
+        "paragraphs": [
+          "VoidZero, the team behind Vite, Vitest, Rolldown, Oxc, and Vite+, is joining Cloudflare. Vite stays open source, vendor-agnostic, and built for everyone.\n...",
+          "The Astro Technology Company team — the creators of the Astro web framework — is joining Cloudflare. We’re doubling down on making Astro the best framework for content-driven websites, today and in the years to come....",
+          "Cloudflare acquires Human Native, an AI data marketplace specialising in transforming content into searchable and useful data, to accelerate work building new economic models for the Internet....",
+          "Today, we’re excited to announce that Replicate is officially part of Cloudflare. We wanted to share a bit about our journey and why we made this decision. ...",
+          "Bringing Replicate’s tools into Cloudflare will continue to make our Workers Platform the best place on the Internet to build and deploy any AI or agentic workflow.\n...",
+          "Cloudflare now provides clientless, browser-based support for the Remote Desktop Protocol (RDP). It enables secure, remote Windows server access without VPNs or RDP clients....",
+          "Access for Infrastructure, BastionZero’s integration into Cloudflare One, will enable organizations to apply Zero Trust controls to their servers, databases, Kubernetes clusters, and more. Today we’re announcing short-lived SSH access as the first available feature of this integr...",
+          "The acquisition of Kivera broadens the scope of Cloudflare’s SASE platform beyond just apps, incorporating increased cloud security through proactive configuration management of cloud services. ...",
+          "We’re excited to announce that BastionZero, a Zero Trust infrastructure access platform, has joined Cloudflare. This acquisition extends our Zero Trust Network Access (ZTNA) flows with native access management for infrastructure like servers, Kubernetes clusters, and databases...",
+          "Today, we’re thrilled to announce that Cloudflare has acquired Baselime, a serverless observability company..."
+        ],
+        "lists": [
+          [
+            "Evan You",
+            "Steve Faulkner"
+          ],
+          [
+            "Fred Schott",
+            "Brendan Irvine-Broque"
+          ],
+          [
+            "Will Allen",
+            "James Smith"
+          ],
+          [
+            "Andreas Jansson",
+            "Ben Firshman"
+          ],
+          [
+            "Rita Kozlov",
+            "Ben Firshman"
+          ],
+          [
+            "Ann Ming Samborski",
+            ", Gabriel Bauman",
+            ", Athanasios Filippidis",
+            ", Mike Borkenstein"
+          ],
+          [
+            "Sharon Goldberg",
+            ", Ann Ming Samborski",
+            ", Sebby Lipman"
+          ],
+          [
+            "Noelle Kagan",
+            ", Neil Brown",
+            ", Yumna Moazzam"
+          ],
+          [
+            "Kenny Johnson",
+            ", Michael Keane"
+          ],
+          [
+            "Boris Tane",
+            ", Rita Kozlov"
+          ],
+          [
+            "Sunil Pai",
+            ", Rita Kozlov"
+          ],
+          [
+            "Steve Welham",
+            ", David Naylor"
+          ],
+          [
+            "John Graham-Cumming"
+          ],
+          [
+            "Corey Mahan"
+          ],
+          [
+            "Yair Dovrat"
+          ],
+          [
+            "Aly Cabral",
+            ", Glen Maddern"
+          ],
+          [
+            "Darren Remington"
+          ],
+          [
+            "John Graham-Cumming"
+          ],
+          [
+            "Matthew Prince"
+          ],
+          [
+            "Zack Bloom"
+          ]
+        ],
+        "links": [
+          {
+            "text": "VoidZero is joining Cloudflare",
+            "href": "/voidzero-joins-cloudflare/"
+          },
+          {
+            "text": "Continue reading »",
+            "href": "/voidzero-joins-cloudflare/"
+          },
+          {
+            "text": "Evan You",
+            "href": "/author/evan-you/"
+          },
+          {
+            "text": "Steve Faulkner",
+            "href": "/author/steve-faulkner/"
+          },
+          {
+            "text": "Astro is joining Cloudflare",
+            "href": "/astro-joins-cloudflare/"
+          },
+          {
+            "text": "Acquisitions",
+            "href": "/tag/acquisitions/"
+          },
+          {
+            "text": "Application Services",
+            "href": "/tag/application-services/"
+          },
+          {
+            "text": "Developer Platform",
+            "href": "/tag/developer-platform/"
+          },
+          {
+            "text": "Cloudflare Workers",
+            "href": "/tag/workers/"
+          },
+          {
+            "text": "Workers AI",
+            "href": "/tag/workers-ai/"
+          },
+          {
+            "text": "Security",
+            "href": "/tag/security/"
+          },
+          {
+            "text": "Fred Schott",
+            "href": "/author/fred-schott/"
+          },
+          {
+            "text": "Brendan Irvine-Broque",
+            "href": "/author/brendan-irvine-broque/"
+          },
+          {
+            "text": "Human Native is joining Cloudflare",
+            "href": "/human-native-joins-cloudflare/"
+          },
+          {
+            "text": "Generative AI",
+            "href": "/tag/generative-ai/"
+          },
+          {
+            "text": "Data",
+            "href": "/tag/data/"
+          },
+          {
+            "text": "Acquisitions",
+            "href": "/tag/acquisitions/"
+          },
+          {
+            "text": "Developer Platform",
+            "href": "/tag/developer-platform/"
+          },
+          {
+            "text": "Will Allen",
+            "href": "/author/will-allen/"
+          },
+          {
+            "text": "James Smith",
+            "href": "/author/james-smith/"
+          }
+        ],
+        "description": "Collection of Cloudflare blog posts tagged 'Acquisitions'"
+      },
+      "linksFound": 0,
+      "durationMs": 793
+    },
+    {
+      "url": "https://blog.cloudflare.com/tag/developers/",
+      "depth": 1,
+      "status": "success",
+      "data": {
+        "title": "Developers",
+        "summary": "Get the latest news on how products at Cloudflare are built, technologies used, and open positions to join the teams helping to build a better Internet.",
+        "key_points": [
+          "Your AI bill is out of control. Cloudflare can fix it now.",
+          "VoidZero is joining Cloudflare",
+          "Announcing Claude Compliance API support with Cloudflare CASB",
+          "Browser Run: now running on Cloudflare Containers, it’s faster and more scalable",
+          "Introducing Dynamic Workflows: durable execution that follows the tenant"
+        ],
+        "headings": [
+          "Developers",
+          "Your AI bill is out of control. Cloudflare can fix it now.",
+          "VoidZero is joining Cloudflare",
+          "Announcing Claude Compliance API support with Cloudflare CASB",
+          "Browser Run: now running on Cloudflare Containers, it’s faster and more scalable",
+          "Introducing Dynamic Workflows: durable execution that follows the tenant",
+          "MORE POSTS"
+        ],
+        "paragraphs": [
+          "AI Gateway now features real-time spend limits to prevent runaway token bills across multiple AI providers. By integrating with Cloudflare Access, companies can use identity-driven budgets and policies....",
+          "VoidZero, the team behind Vite, Vitest, Rolldown, Oxc, and Vite+, is joining Cloudflare. Vite stays open source, vendor-agnostic, and built for everyone.\n...",
+          "Cloudflare now integrates with the Claude Compliance API, so that security teams can monitor Claude Enterprise activity directly in the Cloudflare Dashboard. \n...",
+          "We’ve enabled higher usage limits, faster performance, better reliability, and increased shipping velocity for our Browser Run product by rebuilding on top of Cloudflare’s Containers. Here’s how....",
+          "Dynamic Workflows is a library that lets you route durable execution to tenant-provided code on the fly. Built on Dynamic Workers, it enables platforms to serve millions of unique workflows at near-zero idle cost....",
+          "Panics in Rust Workers were historically fatal, poisoning the entire instance. By collaborating upstream on the wasm‑bindgen project, Rust Workers now support resilient critical error recovery, including panic unwinding using WebAssembly Exception Handling....",
+          "Agents Week 2026 is a wrap. Let’s take a look at everything we announced, from compute and security to the agent toolbox, platform tools, and the emerging agentic web. Everything we shipped for the agentic cloud.\n...",
+          "We built our internal AI engineering stack on the same products we ship. That means 20 million requests routed through AI Gateway, 241 billion tokens processed, and inference running on Workers AI, serving more than 3,683 internal users. Here's how we did it.\n...",
+          "Learn about how we built a CI-native AI code reviewer using OpenCode that helps our engineers ship better, safer code....",
+          "Soft directives don’t stop crawlers from ingesting deprecated content. Redirects for AI Training allows anybody on Cloudflare to redirect verified crawlers to canonical pages with one toggle and no origin changes...."
+        ],
+        "lists": [
+          [
+            "Ming Lu",
+            "Kenny Johnson"
+          ],
+          [
+            "Evan You",
+            "Steve Faulkner"
+          ],
+          [
+            "Abe Carryl"
+          ],
+          [
+            "Ruskin Constant",
+            "Rui Figueira",
+            "Sofia Cardita"
+          ],
+          [
+            "Dan Lapid",
+            "Luís Duarte"
+          ],
+          [
+            "Guy Bedford",
+            ", Hood Chatham",
+            ", Logan Gatlin"
+          ],
+          [
+            "Ming Lu",
+            ", Anni Wang"
+          ],
+          [
+            "Ayush Thakur",
+            ", Scott Roe-Meschke",
+            ", Rajesh Bhatia"
+          ],
+          [
+            "Ryan Skidmore"
+          ],
+          [
+            "Cam Whiteside",
+            ", David Belson",
+            ", André Cruz"
+          ],
+          [
+            "Ming Lu",
+            ", Michelle Chen"
+          ],
+          [
+            "Michelle Chen",
+            ", Kevin Flansburg",
+            ", Vlad Krasnov"
+          ],
+          [
+            "Dillon Mulroy",
+            ", Matt Carey",
+            ", Matt Silverlock"
+          ],
+          [
+            "Vy Ton",
+            ", Matt Silverlock"
+          ],
+          [
+            "Thomas Gauvin",
+            ", Eric Falcão"
+          ],
+          [
+            "Sunil Pai",
+            ", Kate Reznykova"
+          ],
+          [
+            "Kylie Czajkowski",
+            ", Aparna Somaiah",
+            ", Brayden Wilmoth"
+          ],
+          [
+            "Ankit Shah",
+            ", Carlos Armada"
+          ],
+          [
+            "Kathy Liao"
+          ],
+          [
+            "Luís Duarte",
+            ", Mia Malden",
+            ", André Venceslau"
+          ]
+        ],
+        "links": [
+          {
+            "text": "Your AI bill is out of control. Cloudflare can fix it now.",
+            "href": "/ai-gateway-spend-limits/"
+          },
+          {
+            "text": "Continue reading »",
+            "href": "/ai-gateway-spend-limits/"
+          },
+          {
+            "text": "Ming Lu",
+            "href": "/author/ming-lu/"
+          },
+          {
+            "text": "Kenny Johnson",
+            "href": "/author/kenny/"
+          },
+          {
+            "text": "VoidZero is joining Cloudflare",
+            "href": "/voidzero-joins-cloudflare/"
+          },
+          {
+            "text": "Acquisitions",
+            "href": "/tag/acquisitions/"
+          },
+          {
+            "text": "Developers",
+            "href": "/tag/developers/"
+          },
+          {
+            "text": "Developer Platform",
+            "href": "/tag/developer-platform/"
+          },
+          {
+            "text": "Workers AI",
+            "href": "/tag/workers-ai/"
+          },
+          {
+            "text": "Vite",
+            "href": "/tag/vite/"
+          },
+          {
+            "text": "Evan You",
+            "href": "/author/evan-you/"
+          },
+          {
+            "text": "Steve Faulkner",
+            "href": "/author/steve-faulkner/"
+          },
+          {
+            "text": "Announcing Claude Compliance API support with Cloudflare CASB",
+            "href": "/casb-anthropic-integration/"
+          },
+          {
+            "text": "Developer Platform",
+            "href": "/tag/developer-platform/"
+          },
+          {
+            "text": "Developers",
+            "href": "/tag/developers/"
+          },
+          {
+            "text": "CASB",
+            "href": "/tag/casb/"
+          },
+          {
+            "text": "Cloudflare One",
+            "href": "/tag/cloudflare-one/"
+          },
+          {
+            "text": "SASE",
+            "href": "/tag/sase/"
+          },
+          {
+            "text": "Zero Trust",
+            "href": "/tag/zero-trust/"
+          },
+          {
+            "text": "Cloudflare Zero Trust",
+            "href": "/tag/cloudflare-zero-trust/"
+          }
+        ],
+        "description": "Collection of Cloudflare blog posts tagged 'Developers'"
+      },
+      "linksFound": 0,
+      "durationMs": 958
+    },
+    {
+      "url": "https://blog.cloudflare.com/tag/developer-platform/",
+      "depth": 1,
+      "status": "success",
+      "data": {
+        "title": "Developer Platform",
+        "summary": "Get the latest news on how products at Cloudflare are built, technologies used, and open positions to join the teams helping to build a better Internet.",
+        "key_points": [
+          "Your AI bill is out of control. Cloudflare can fix it now.",
+          "VoidZero is joining Cloudflare",
+          "Announcing Claude Compliance API support with Cloudflare CASB",
+          "Browser Run: now running on Cloudflare Containers, it’s faster and more scalable",
+          "Introducing Dynamic Workflows: durable execution that follows the tenant"
+        ],
+        "headings": [
+          "Developer Platform",
+          "Your AI bill is out of control. Cloudflare can fix it now.",
+          "VoidZero is joining Cloudflare",
+          "Announcing Claude Compliance API support with Cloudflare CASB",
+          "Browser Run: now running on Cloudflare Containers, it’s faster and more scalable",
+          "Introducing Dynamic Workflows: durable execution that follows the tenant",
+          "MORE POSTS"
+        ],
+        "paragraphs": [
+          "AI Gateway now features real-time spend limits to prevent runaway token bills across multiple AI providers. By integrating with Cloudflare Access, companies can use identity-driven budgets and policies....",
+          "VoidZero, the team behind Vite, Vitest, Rolldown, Oxc, and Vite+, is joining Cloudflare. Vite stays open source, vendor-agnostic, and built for everyone.\n...",
+          "Cloudflare now integrates with the Claude Compliance API, so that security teams can monitor Claude Enterprise activity directly in the Cloudflare Dashboard. \n...",
+          "We’ve enabled higher usage limits, faster performance, better reliability, and increased shipping velocity for our Browser Run product by rebuilding on top of Cloudflare’s Containers. Here’s how....",
+          "Dynamic Workflows is a library that lets you route durable execution to tenant-provided code on the fly. Built on Dynamic Workers, it enables platforms to serve millions of unique workflows at near-zero idle cost....",
+          "Starting today, agents can now be Cloudflare customers. They can create a Cloudflare account, start a paid subscription, register a domain, and get back an API token to deploy code right away. Humans can be in the loop to grant permission, but there’s no need to go to the dashboa...",
+          "Panics in Rust Workers were historically fatal, poisoning the entire instance. By collaborating upstream on the wasm‑bindgen project, Rust Workers now support resilient critical error recovery, including panic unwinding using WebAssembly Exception Handling....",
+          "Agents Week 2026 is a wrap. Let’s take a look at everything we announced, from compute and security to the agent toolbox, platform tools, and the emerging agentic web. Everything we shipped for the agentic cloud.\n...",
+          "We built our internal AI engineering stack on the same products we ship. That means 20 million requests routed through AI Gateway, 241 billion tokens processed, and inference running on Workers AI, serving more than 3,683 internal users. Here's how we did it.\n...",
+          "Learn about how we built a CI-native AI code reviewer using OpenCode that helps our engineers ship better, safer code...."
+        ],
+        "lists": [
+          [
+            "Ming Lu",
+            "Kenny Johnson"
+          ],
+          [
+            "Evan You",
+            "Steve Faulkner"
+          ],
+          [
+            "Abe Carryl"
+          ],
+          [
+            "Ruskin Constant",
+            "Rui Figueira",
+            "Sofia Cardita"
+          ],
+          [
+            "Dan Lapid",
+            "Luís Duarte"
+          ],
+          [
+            "Sid Chatterjee",
+            ", Brendan Irvine-Broque"
+          ],
+          [
+            "Guy Bedford",
+            ", Hood Chatham",
+            ", Logan Gatlin"
+          ],
+          [
+            "Ming Lu",
+            ", Anni Wang"
+          ],
+          [
+            "Ayush Thakur",
+            ", Scott Roe-Meschke",
+            ", Rajesh Bhatia"
+          ],
+          [
+            "Ryan Skidmore"
+          ],
+          [
+            "Cam Whiteside",
+            ", David Belson",
+            ", André Cruz"
+          ],
+          [
+            "Rohan Mukherjee",
+            ", Abhishek Kankani"
+          ],
+          [
+            "Ming Lu",
+            ", Michelle Chen"
+          ],
+          [
+            "Michelle Chen",
+            ", Kevin Flansburg",
+            ", Vlad Krasnov"
+          ],
+          [
+            "Dillon Mulroy",
+            ", Matt Carey",
+            ", Matt Silverlock"
+          ],
+          [
+            "Vy Ton",
+            ", Matt Silverlock"
+          ],
+          [
+            "Thomas Gauvin",
+            ", Eric Falcão"
+          ],
+          [
+            "Sunil Pai",
+            ", Kate Reznykova"
+          ],
+          [
+            "Kylie Czajkowski",
+            ", Aparna Somaiah",
+            ", Brayden Wilmoth"
+          ],
+          [
+            "Ankit Shah",
+            ", Carlos Armada"
+          ]
+        ],
+        "links": [
+          {
+            "text": "Your AI bill is out of control. Cloudflare can fix it now.",
+            "href": "/ai-gateway-spend-limits/"
+          },
+          {
+            "text": "Continue reading »",
+            "href": "/ai-gateway-spend-limits/"
+          },
+          {
+            "text": "Ming Lu",
+            "href": "/author/ming-lu/"
+          },
+          {
+            "text": "Kenny Johnson",
+            "href": "/author/kenny/"
+          },
+          {
+            "text": "VoidZero is joining Cloudflare",
+            "href": "/voidzero-joins-cloudflare/"
+          },
+          {
+            "text": "Acquisitions",
+            "href": "/tag/acquisitions/"
+          },
+          {
+            "text": "Developers",
+            "href": "/tag/developers/"
+          },
+          {
+            "text": "Developer Platform",
+            "href": "/tag/developer-platform/"
+          },
+          {
+            "text": "Workers AI",
+            "href": "/tag/workers-ai/"
+          },
+          {
+            "text": "Vite",
+            "href": "/tag/vite/"
+          },
+          {
+            "text": "Evan You",
+            "href": "/author/evan-you/"
+          },
+          {
+            "text": "Steve Faulkner",
+            "href": "/author/steve-faulkner/"
+          },
+          {
+            "text": "Announcing Claude Compliance API support with Cloudflare CASB",
+            "href": "/casb-anthropic-integration/"
+          },
+          {
+            "text": "Developer Platform",
+            "href": "/tag/developer-platform/"
+          },
+          {
+            "text": "Developers",
+            "href": "/tag/developers/"
+          },
+          {
+            "text": "CASB",
+            "href": "/tag/casb/"
+          },
+          {
+            "text": "Cloudflare One",
+            "href": "/tag/cloudflare-one/"
+          },
+          {
+            "text": "SASE",
+            "href": "/tag/sase/"
+          },
+          {
+            "text": "Zero Trust",
+            "href": "/tag/zero-trust/"
+          },
+          {
+            "text": "Cloudflare Zero Trust",
+            "href": "/tag/cloudflare-zero-trust/"
+          }
+        ],
+        "description": "Collection of Cloudflare blog posts tagged 'Developer Platform'"
+      },
+      "linksFound": 0,
+      "durationMs": 808
+    },
+    {
+      "url": "https://blog.cloudflare.com/tag/workers-ai/",
+      "depth": 1,
+      "status": "success",
+      "data": {
+        "title": "Workers AI",
+        "summary": "Get the latest news on how products at Cloudflare are built, technologies used, and open positions to join the teams helping to build a better Internet.",
+        "key_points": [
+          "VoidZero is joining Cloudflare",
+          "Building the agentic cloud: everything we launched during Agents Week 2026",
+          "The AI engineering stack we built internally — on the platform we ship",
+          "Cloudflare’s AI Platform: an inference layer designed for agents",
+          "Building the foundation for running extra-large language models"
+        ],
+        "headings": [
+          "Workers AI",
+          "VoidZero is joining Cloudflare",
+          "Building the agentic cloud: everything we launched during Agents Week 2026",
+          "The AI engineering stack we built internally — on the platform we ship",
+          "Cloudflare’s AI Platform: an inference layer designed for agents",
+          "Building the foundation for running extra-large language models",
+          "MORE POSTS"
+        ],
+        "paragraphs": [
+          "VoidZero, the team behind Vite, Vitest, Rolldown, Oxc, and Vite+, is joining Cloudflare. Vite stays open source, vendor-agnostic, and built for everyone.\n...",
+          "Agents Week 2026 is a wrap. Let’s take a look at everything we announced, from compute and security to the agent toolbox, platform tools, and the emerging agentic web. Everything we shipped for the agentic cloud.\n...",
+          "We built our internal AI engineering stack on the same products we ship. That means 20 million requests routed through AI Gateway, 241 billion tokens processed, and inference running on Workers AI, serving more than 3,683 internal users. Here's how we did it.\n...",
+          "We're building AI Gateway into a unified inference layer for AI, letting developers call models from 14+ providers. New features include Workers AI binding integration and an expanded catalog with multimodal models.\n...",
+          "We built a custom technology stack to run fast large language models on Cloudflare’s infrastructure. This post explores the engineering trade-offs and technical optimizations required to make high-performance AI inference accessible....",
+          "Agents are becoming multi-channel. That means making them available wherever your users already are — including the inbox. Today, Cloudflare Email Service enters public beta with the infrastructure layer to make that easy: send, receive, and process email natively from your agent...",
+          "Agent Lee is an in-dashboard agent that shifts Cloudflare’s interface from manual tab-switching to a single prompt. Using sandboxed TypeScript, it helps you troubleshoot and manage your stack as a grounded technical collaborator.\n...",
+          "Cloudflare Mesh provides secure, private network access for users, nodes, and autonomous AI agents. By integrating with Workers VPC, developers can now grant agents scoped access to private databases and APIs without manual tunnels.\n...",
+          "Cloudflare's mission has always been to help build a better Internet. Sometimes that means building for the Internet as it exists. Sometimes it means building for the Internet as it's about to become. \n\nThis week, we're kicking off Agents Week, dedicated to what comes next.\n...",
+          "Cloudflare’s global network has officially crossed 500 Tbps of external capacity, enough to route more than 20% of the web and absorb the largest DDoS attacks ever recorded...."
+        ],
+        "lists": [
+          [
+            "Evan You",
+            "Steve Faulkner"
+          ],
+          [
+            "Ming Lu",
+            "Anni Wang"
+          ],
+          [
+            "Ayush Thakur",
+            "Scott Roe-Meschke",
+            "Rajesh Bhatia"
+          ],
+          [
+            "Ming Lu",
+            "Michelle Chen"
+          ],
+          [
+            "Michelle Chen",
+            "Kevin Flansburg",
+            "Vlad Krasnov"
+          ],
+          [
+            "Thomas Gauvin",
+            ", Eric Falcão"
+          ],
+          [
+            "Kylie Czajkowski",
+            ", Aparna Somaiah",
+            ", Brayden Wilmoth"
+          ],
+          [
+            "Nikita Cano",
+            ", Thomas Gauvin"
+          ],
+          [
+            "Rita Kozlov",
+            ", Dane Knecht"
+          ],
+          [
+            "Tanner Ryan"
+          ],
+          [
+            "Kenton Varda",
+            ", Sunil Pai",
+            ", Ketan Gupta"
+          ],
+          [
+            "Michelle Chen",
+            ", Kevin Flansburg",
+            ", Ashish Datta",
+            ", Kevin Jain"
+          ],
+          [
+            "Steve Faulkner"
+          ],
+          [
+            "Matt Carey"
+          ],
+          [
+            "Fred Schott",
+            ", Brendan Irvine-Broque"
+          ],
+          [
+            "Andreas Jansson",
+            ", Ben Firshman"
+          ],
+          [
+            "Michelle Chen",
+            ", David Liu"
+          ],
+          [
+            "Kenny Johnson",
+            ", James Allworth"
+          ],
+          [
+            "Alexandra Moraru",
+            ", Harsh Saxena",
+            ", Steve James",
+            ", Nick Downie",
+            ", Levi Kipke"
+          ],
+          [
+            "Vlad Krasnov",
+            ", Mari Galicer"
+          ]
+        ],
+        "links": [
+          {
+            "text": "VoidZero is joining Cloudflare",
+            "href": "/voidzero-joins-cloudflare/"
+          },
+          {
+            "text": "Continue reading »",
+            "href": "/voidzero-joins-cloudflare/"
+          },
+          {
+            "text": "Evan You",
+            "href": "/author/evan-you/"
+          },
+          {
+            "text": "Steve Faulkner",
+            "href": "/author/steve-faulkner/"
+          },
+          {
+            "text": "Building the agentic cloud: everything we launched during Agents Week 2026",
+            "href": "/agents-week-in-review/"
+          },
+          {
+            "text": "Agents Week",
+            "href": "/tag/agents-week/"
+          },
+          {
+            "text": "Agents",
+            "href": "/tag/agents/"
+          },
+          {
+            "text": "Durable Objects",
+            "href": "/tag/durable-objects/"
+          },
+          {
+            "text": "Cloudflare Workers",
+            "href": "/tag/workers/"
+          },
+          {
+            "text": "SDK",
+            "href": "/tag/sdk/"
+          },
+          {
+            "text": "Browser Run",
+            "href": "/tag/browser-run/"
+          },
+          {
+            "text": "Cloudflare Access",
+            "href": "/tag/cloudflare-access/"
+          },
+          {
+            "text": "Browser Rendering",
+            "href": "/tag/browser-rendering/"
+          },
+          {
+            "text": "MCP",
+            "href": "/tag/mcp/"
+          },
+          {
+            "text": "Developer Platform",
+            "href": "/tag/developer-platform/"
+          },
+          {
+            "text": "Developers",
+            "href": "/tag/developers/"
+          },
+          {
+            "text": "Sandbox",
+            "href": "/tag/sandbox/"
+          },
+          {
+            "text": "LLM",
+            "href": "/tag/llm/"
+          },
+          {
+            "text": "Cloudflare Gateway",
+            "href": "/tag/gateway/"
+          },
+          {
+            "text": "Workers AI",
+            "href": "/tag/workers-ai/"
+          }
+        ],
+        "description": "Collection of Cloudflare blog posts tagged 'Workers AI'"
+      },
+      "linksFound": 0,
+      "durationMs": 1097
+    },
+    {
+      "url": "https://blog.cloudflare.com/tag/vite/",
+      "depth": 1,
+      "status": "success",
+      "data": {
+        "title": "Vite",
+        "summary": "Get the latest news on how products at Cloudflare are built, technologies used, and open positions to join the teams helping to build a better Internet.",
+        "key_points": [
+          "VoidZero is joining Cloudflare"
+        ],
+        "headings": [
+          "Vite",
+          "VoidZero is joining Cloudflare"
+        ],
+        "paragraphs": [
+          "VoidZero, the team behind Vite, Vitest, Rolldown, Oxc, and Vite+, is joining Cloudflare. Vite stays open source, vendor-agnostic, and built for everyone.\n..."
+        ],
+        "lists": [
+          [
+            "Evan You",
+            "Steve Faulkner"
+          ]
+        ],
+        "links": [
+          {
+            "text": "VoidZero is joining Cloudflare",
+            "href": "/voidzero-joins-cloudflare/"
+          },
+          {
+            "text": "Continue reading »",
+            "href": "/voidzero-joins-cloudflare/"
+          },
+          {
+            "text": "Evan You",
+            "href": "/author/evan-you/"
+          },
+          {
+            "text": "Steve Faulkner",
+            "href": "/author/steve-faulkner/"
+          }
+        ],
+        "description": "Collection of Cloudflare blog posts tagged 'Vite'"
+      },
+      "linksFound": 0,
+      "durationMs": 692
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "url": "https://www.cloudflare.com/",
+  "schema": "pricing",
+  "model": "cheerio",
+  "scrapedAt": "2026-06-07T06:45:01.421Z",
+  "data": {
+    "title": "Cloudflare: Build for the agent era",
+    "description": "Welcome to Cloudflare - Powering the next generation of applications",
+    "images": [
+      "https://www.cloudflare.com/preview.png"
+    ]
+  },
+  "inputTokens": 0,
+  "outputTokens": 0
+}

@@ -1,0 +1,97 @@
+{
+  "url": "https://www.cloudflare.com/",
+  "schema": "article",
+  "model": "cheerio",
+  "scrapedAt": "2026-06-07T06:43:40.824Z",
+  "data": {
+    "title": "Everything we learned from powering 20% of the Internet—yours by default",
+    "summary": "Welcome to Cloudflare - Powering the next generation of applications",
+    "headings": [
+      "Everything we learned from powering 20% of the Internet—yours by default",
+      "Region: Earth",
+      "Run everywhere",
+      "Run anywhere",
+      "Run at massive scale",
+      "Cloudflare powers\n42% of the Fortune 500",
+      "Why choose Cloudflare",
+      "Fighting infra with “cloud”",
+      "Shipping withCloudflare",
+      "Pay onlywhen your code runs",
+      "Pay for clean traffic",
+      "Tailored to your team",
+      "Fits into your existing workflows",
+      "One network for users, apps, and data",
+      "Secure by default",
+      "Fast path to AI adoption",
+      "Build without boundaries"
+    ],
+    "paragraphs": [
+      "One platform for your apps, agents, and workforce.\nBuild, secure, and scale without managing infrastructure.",
+      "One smart network for workloads + security — close to users, close to data.",
+      "Compute close to users reduces network latency.",
+      "Smart Placement moves your Worker closer to your data for optimized end-to-end latency.",
+      "Faster for 95% of round trips by running Workers near your backend, not you.",
+      "95% of the world’s Internet-connected population is reached by Cloudflare within 50ms.",
+      "Security, connectivity, and code run in 335+ cities around the world, within 50ms of 95% of the world's population.",
+      "Our network is close to your users, applications, and sites. It optimizes all your traffic from source to destination for low latency.",
+      "Duncan Davidson, VP of Developer Productivity, Shopify",
+      "Everything needed tobuild secure, performant applications"
+    ],
+    "links": [
+      {
+        "text": "Start building for free",
+        "href": "https://dash.cloudflare.com/sign-up"
+      },
+      {
+        "text": "See Free plan",
+        "href": "/plans#application-services"
+      },
+      {
+        "text": "See Pro plan",
+        "href": "/plans#application-services"
+      },
+      {
+        "text": "See Business plan",
+        "href": "/plans#application-services"
+      },
+      {
+        "text": "See Contract plan",
+        "href": "/plans#application-services"
+      },
+      {
+        "text": "See Free plan",
+        "href": "/plans#sase"
+      },
+      {
+        "text": "See Pay-as-you-go plan",
+        "href": "/plans#sase"
+      },
+      {
+        "text": "See Contract plan",
+        "href": "/plans#sase"
+      },
+      {
+        "text": "See more",
+        "href": "/plans#developer-platform"
+      },
+      {
+        "text": "See more",
+        "href": "/plans#developer-platform"
+      },
+      {
+        "text": "Start building for free",
+        "href": "https://dash.cloudflare.com/sign-up"
+      },
+      {
+        "text": "View docs",
+        "href": "https://developers.cloudflare.com/"
+      }
+    ],
+    "description": "Welcome to Cloudflare - Powering the next generation of applications",
+    "images": [
+      "https://www.cloudflare.com/preview.png"
+    ]
+  },
+  "inputTokens": 0,
+  "outputTokens": 0
+}
