@@ -1,0 +1,191 @@
+{
+  "schema": "saas_ideas",
+  "exportedAt": "2026-06-07T11:48:58.738Z",
+  "totalRecords": 10,
+  "avgConfidence": 41,
+  "results": [
+    {
+      "url": "https://blog.n8n.io/",
+      "confidence": 57,
+      "page_title": "Guide, Tutorials, and Updates on Workflow Automation - n8n Blog",
+      "ideas": [
+        "Comparing 8 Cloud Integration Platforms for Enterprise IT",
+        "Data Mapping Best Practices for Cross-System Integration",
+        "AI agent performance metrics: what to track and why",
+        "How to debug failures or missteps in AI agent behavior?",
+        "Sovereign AI in practice: automate document summarization with IONOS AI Model Hub and Nextcloud",
+        "How can I make AI Agents more reliable and restrict the actions they can take?",
+        "AI Maturity - Where Enterprises Stand Today",
+        "How To Implement Event-Driven Architecture: Models, Trade-Offs, and Operational Realities"
+      ],
+      "summary": "Discover what AI hallucinations are, how LLMs generate them, and which types matter in production. Learn how to reduce them and create a reliable pipeline.",
+      "published_date": "June 5, 2026",
+      "article_urls": [
+        "/ai-hallucinations/",
+        "/author/yulia/",
+        "/cloud-integration-platforms/",
+        "/data-mapping-best-practices/",
+        "/what-metrics-should-i-track-for-ai-agent-performance/",
+        "/how-to-debug-failures-or-missteps-in-ai-agent-behavior/",
+        "/sovereign-ai-in-practice-automate-document-summarization-with-ionos-ai-model-hub-and-nextcloud/",
+        "/make-ai-agents-more-reliable-and-restrict-the-actions-they-can-take/",
+        "/ai-maturity-where-enterprises-stand-today/",
+        "/how-to-implement-event-driven-architecture/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/assets/css/screen.css?v=2a33f88c05",
+      "confidence": 0
+    },
+    {
+      "url": "https://blog.n8n.io/rss",
+      "confidence": 43,
+      "page_title": "<![CDATA[n8n Blog]]>",
+      "tools_mentioned": [
+        "/Documents/Inbox/",
+        "chunkSize",
+        "documentLoader",
+        "/Notes/Summary_<original-filename>.",
+        "category"
+      ],
+      "ideas": [
+        "What are AI hallucinations?",
+        "What causes AI hallucinations?",
+        "Types of AI hallucinations",
+        "How to prevent AI hallucinations",
+        "Building hallucination-resistant AI pipelines in n8n",
+        "Produce reliable outputs with n8n",
+        "What a cloud integration platform actually does",
+        "What to look for in a cloud integration platform",
+        "The best cloud integration platforms",
+        "Building for the AI-driven stack",
+        "Futureproof your enterprise stack with n8n",
+        "What data mapping actually does in a pipeline",
+        "Data mapping techniques",
+        "6 data mapping best practices for production pipelines",
+        "How to prevent common data mapping failure modes",
+        "Automating data mapping in workflow pipelines",
+        "Build for the long haul with n8n",
+        "What metrics should I track for AI agent performance?",
+        "How to choose the right metrics for your stage?",
+        "How to track agent metrics in n8n?",
+        "What's next?",
+        "Where do agent failures typically come from?",
+        "How deep do I need to go when debugging AI Agents?",
+        "Debugging vs. evaluation: when to switch?",
+        "How to debug AI agents in n8n?",
+        "What's next",
+        "Real-world impact: sovereign legal review",
+        "Prerequisites",
+        "Step-by-Step Setup",
+        "How the Nodes Connect (Data Flow)"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/public/cards.min.css?v=2a33f88c05",
+      "confidence": 0
+    },
+    {
+      "url": "https://blog.n8n.io/webmentions/receive",
+      "confidence": 29,
+      "page_title": "n8n Blog",
+      "summary": "Page not found"
+    },
+    {
+      "url": "https://blog.n8n.io/announcing-the-n8n-certification-course-for-beginners-level-1",
+      "confidence": 57,
+      "page_title": "Announcing the n8n Course for Beginners (Level 1)",
+      "ideas": [
+        "Why n8n courses?",
+        "What you will learn in the Level 1 course",
+        "Share with us"
+      ],
+      "summary": "We’re excited to launch the n8n Beginner’s Course (Level 1)! This free, online, hands-on course is the first in a series of courses that train you to become a low-code automation expert with n8n.",
+      "published_date": "July 28, 2021",
+      "article_urls": [
+        "/how-to-set-up-n8n-via-pm2/",
+        "/how-a-membership-development-manager-automates-his-work-and-investments/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/ai-hallucinations",
+      "confidence": 57,
+      "page_title": "What Are AI Hallucinations? And How To Improve Accuracy in Pipelines",
+      "ideas": [
+        "What are AI hallucinations?",
+        "What causes AI hallucinations?",
+        "Types of AI hallucinations",
+        "How to prevent AI hallucinations",
+        "Building hallucination-resistant AI pipelines in n8n",
+        "Produce reliable outputs with n8n",
+        "Share with us"
+      ],
+      "summary": "AI pipelines rarely fail loudly. They run, return clean outputs, and pass downstream validation — except the answer is wrong. A summarization step invents metrics. A classification agent returns inconsistent labels. None throw exceptions, so pipelines look fine. These failures are AI hallucinations.",
+      "published_date": "June 5, 2026",
+      "article_urls": [
+        "/author/yulia/",
+        "/cloud-integration-platforms/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/data-mapping-best-practices",
+      "confidence": 57,
+      "page_title": "Data Mapping Best Practices for Cross-System Integration",
+      "ideas": [
+        "What data mapping actually does in a pipeline",
+        "Data mapping techniques",
+        "6 data mapping best practices for production pipelines",
+        "How to prevent common data mapping failure modes",
+        "Automating data mapping in workflow pipelines",
+        "Build for the long haul with n8n",
+        "Share with us"
+      ],
+      "summary": "Data rarely lives in the same place it was created. Every time you sync customer records between systems, you’re forced to deal with different schemas. Without a systematic approach, pipelines become a tangle of undocumented scripts and fragile ETL data mapping logic that breaks the moment a source system changes.",
+      "published_date": "June 5, 2026",
+      "article_urls": [
+        "/author/yulia/",
+        "/cloud-integration-platforms/",
+        "/what-metrics-should-i-track-for-ai-agent-performance/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/cloud-integration-platforms",
+      "confidence": 57,
+      "page_title": "Comparing 8 Cloud Integration Platforms for Enterprise IT",
+      "ideas": [
+        "What a cloud integration platform actually does",
+        "What to look for in a cloud integration platform",
+        "The best cloud integration platforms",
+        "Building for the AI-driven stack",
+        "Futureproof your enterprise stack with n8n",
+        "Share with us"
+      ],
+      "summary": "Choosing an integration layer is a significant commitment that’s notoriously difficult to walk back. If you pick a platform that doesn’t scale or locks your data into a proprietary black box, you’re stuck with it — along with the burden of mounting costs and technical debt.",
+      "published_date": "June 5, 2026",
+      "article_urls": [
+        "/author/yulia/",
+        "/ai-hallucinations/",
+        "/data-mapping-best-practices/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/what-metrics-should-i-track-for-ai-agent-performance",
+      "confidence": 57,
+      "page_title": "AI agent performance metrics: what to track and why",
+      "ideas": [
+        "What metrics should I track for AI agent performance?",
+        "How to choose the right metrics for your stage?",
+        "How to track agent metrics in n8n?",
+        "What's next?",
+        "Share with us"
+      ],
+      "summary": "When building AI agents, you are most likely going to set up evaluation tests at some point. You’ll need to decide what to actually measure.",
+      "published_date": "June 5, 2026",
+      "article_urls": [
+        "/author/yulia/",
+        "/data-mapping-best-practices/",
+        "/how-to-debug-failures-or-missteps-in-ai-agent-behavior/"
+      ]
+    }
+  ]
+}

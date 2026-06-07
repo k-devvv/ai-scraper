@@ -1,0 +1,341 @@
+{
+  "schema": "saas_ideas",
+  "exportedAt": "2026-06-07T11:52:15.702Z",
+  "totalRecords": 15,
+  "avgConfidence": 61,
+  "results": [
+    {
+      "url": "https://blog.n8n.io/",
+      "confidence": 57,
+      "page_title": "Guide, Tutorials, and Updates on Workflow Automation - n8n Blog",
+      "ideas": [
+        "Comparing 8 Cloud Integration Platforms for Enterprise IT",
+        "Data Mapping Best Practices for Cross-System Integration",
+        "AI agent performance metrics: what to track and why",
+        "How to debug failures or missteps in AI agent behavior?",
+        "Sovereign AI in practice: automate document summarization with IONOS AI Model Hub and Nextcloud",
+        "How can I make AI Agents more reliable and restrict the actions they can take?",
+        "AI Maturity - Where Enterprises Stand Today",
+        "How To Implement Event-Driven Architecture: Models, Trade-Offs, and Operational Realities"
+      ],
+      "summary": "Discover what AI hallucinations are, how LLMs generate them, and which types matter in production. Learn how to reduce them and create a reliable pipeline.",
+      "published_date": "June 5, 2026",
+      "article_urls": [
+        "/ai-hallucinations/",
+        "/author/yulia/",
+        "/cloud-integration-platforms/",
+        "/data-mapping-best-practices/",
+        "/what-metrics-should-i-track-for-ai-agent-performance/",
+        "/how-to-debug-failures-or-missteps-in-ai-agent-behavior/",
+        "/sovereign-ai-in-practice-automate-document-summarization-with-ionos-ai-model-hub-and-nextcloud/",
+        "/make-ai-agents-more-reliable-and-restrict-the-actions-they-can-take/",
+        "/ai-maturity-where-enterprises-stand-today/",
+        "/how-to-implement-event-driven-architecture/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/announcing-the-n8n-certification-course-for-beginners-level-1",
+      "confidence": 57,
+      "page_title": "Announcing the n8n Course for Beginners (Level 1)",
+      "ideas": [
+        "Why n8n courses?",
+        "What you will learn in the Level 1 course",
+        "Share with us"
+      ],
+      "summary": "We’re excited to launch the n8n Beginner’s Course (Level 1)! This free, online, hands-on course is the first in a series of courses that train you to become a low-code automation expert with n8n.",
+      "published_date": "July 28, 2021",
+      "article_urls": [
+        "/how-to-set-up-n8n-via-pm2/",
+        "/how-a-membership-development-manager-automates-his-work-and-investments/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/ai-hallucinations",
+      "confidence": 57,
+      "page_title": "What Are AI Hallucinations? And How To Improve Accuracy in Pipelines",
+      "ideas": [
+        "What are AI hallucinations?",
+        "What causes AI hallucinations?",
+        "Types of AI hallucinations",
+        "How to prevent AI hallucinations",
+        "Building hallucination-resistant AI pipelines in n8n",
+        "Produce reliable outputs with n8n",
+        "Share with us"
+      ],
+      "summary": "AI pipelines rarely fail loudly. They run, return clean outputs, and pass downstream validation — except the answer is wrong. A summarization step invents metrics. A classification agent returns inconsistent labels. None throw exceptions, so pipelines look fine. These failures are AI hallucinations.",
+      "published_date": "June 5, 2026",
+      "article_urls": [
+        "/author/yulia/",
+        "/cloud-integration-platforms/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/data-mapping-best-practices",
+      "confidence": 57,
+      "page_title": "Data Mapping Best Practices for Cross-System Integration",
+      "ideas": [
+        "What data mapping actually does in a pipeline",
+        "Data mapping techniques",
+        "6 data mapping best practices for production pipelines",
+        "How to prevent common data mapping failure modes",
+        "Automating data mapping in workflow pipelines",
+        "Build for the long haul with n8n",
+        "Share with us"
+      ],
+      "summary": "Data rarely lives in the same place it was created. Every time you sync customer records between systems, you’re forced to deal with different schemas. Without a systematic approach, pipelines become a tangle of undocumented scripts and fragile ETL data mapping logic that breaks the moment a source system changes.",
+      "published_date": "June 5, 2026",
+      "article_urls": [
+        "/author/yulia/",
+        "/cloud-integration-platforms/",
+        "/what-metrics-should-i-track-for-ai-agent-performance/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/cloud-integration-platforms",
+      "confidence": 57,
+      "page_title": "Comparing 8 Cloud Integration Platforms for Enterprise IT",
+      "ideas": [
+        "What a cloud integration platform actually does",
+        "What to look for in a cloud integration platform",
+        "The best cloud integration platforms",
+        "Building for the AI-driven stack",
+        "Futureproof your enterprise stack with n8n",
+        "Share with us"
+      ],
+      "summary": "Choosing an integration layer is a significant commitment that’s notoriously difficult to walk back. If you pick a platform that doesn’t scale or locks your data into a proprietary black box, you’re stuck with it — along with the burden of mounting costs and technical debt.",
+      "published_date": "June 5, 2026",
+      "article_urls": [
+        "/author/yulia/",
+        "/ai-hallucinations/",
+        "/data-mapping-best-practices/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/what-metrics-should-i-track-for-ai-agent-performance",
+      "confidence": 57,
+      "page_title": "AI agent performance metrics: what to track and why",
+      "ideas": [
+        "What metrics should I track for AI agent performance?",
+        "How to choose the right metrics for your stage?",
+        "How to track agent metrics in n8n?",
+        "What's next?",
+        "Share with us"
+      ],
+      "summary": "When building AI agents, you are most likely going to set up evaluation tests at some point. You’ll need to decide what to actually measure.",
+      "published_date": "June 5, 2026",
+      "article_urls": [
+        "/author/yulia/",
+        "/data-mapping-best-practices/",
+        "/how-to-debug-failures-or-missteps-in-ai-agent-behavior/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/how-to-debug-failures-or-missteps-in-ai-agent-behavior",
+      "confidence": 57,
+      "page_title": "How to debug failures or missteps in AI agent behavior?",
+      "ideas": [
+        "Where do agent failures typically come from?",
+        "How deep do I need to go when debugging AI Agents?",
+        "Debugging vs. evaluation: when to switch?",
+        "How to debug AI agents in n8n?",
+        "What's next",
+        "Share with us"
+      ],
+      "summary": "Debugging is part of every stage of an AI agent's life: you reach for it while building the first version, every time you update a prompt or swap a tool, and most critically, in production when something quietly goes wrong.",
+      "published_date": "June 2, 2026",
+      "article_urls": [
+        "/author/yulia/",
+        "/what-metrics-should-i-track-for-ai-agent-performance/",
+        "/sovereign-ai-in-practice-automate-document-summarization-with-ionos-ai-model-hub-and-nextcloud/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/sovereign-ai-in-practice-automate-document-summarization-with-ionos-ai-model-hub-and-nextcloud",
+      "confidence": 71,
+      "page_title": "Sovereign AI in practice:  automate document summarization with IONOS AI Model Hub and Nextcloud",
+      "ideas": [
+        "Real-world impact: sovereign legal review",
+        "Prerequisites",
+        "Step-by-Step Setup",
+        "How the Nodes Connect (Data Flow)",
+        "Troubleshooting",
+        "Why this setup is worth the extra steps",
+        "The outcome",
+        "Take the lead on sovereign AI",
+        "Share with us"
+      ],
+      "summary": "This Node Spotlight is a guest post written by Fabrice Wurtz, Content Marketing Manager at IONOS.",
+      "published_date": "May 31, 2026",
+      "tools_mentioned": [
+        "/Documents/Inbox/",
+        "chunkSize",
+        "documentLoader",
+        "/Notes/Summary_<original-filename>."
+      ],
+      "article_urls": [
+        "/how-to-debug-failures-or-missteps-in-ai-agent-behavior/",
+        "/make-ai-agents-more-reliable-and-restrict-the-actions-they-can-take/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/make-ai-agents-more-reliable-and-restrict-the-actions-they-can-take",
+      "confidence": 71,
+      "page_title": "How can I make AI Agents more reliable and restrict the actions they can take?",
+      "ideas": [
+        "Layered controls for reliable AI agents",
+        "Applying controls across the AI agent lifecycle",
+        "How to make AI Agents reliable in n8n",
+        "What's next?",
+        "Share with us"
+      ],
+      "summary": "Anthropic's work with dozens of production teams revealed that the most successful LLM agents use simple, composable patterns rather than complex frameworks. However, even simple agents introduce a problem that traditional automation doesn't have.",
+      "published_date": "May 26, 2026",
+      "tools_mentioned": [
+        "category"
+      ],
+      "article_urls": [
+        "/author/yulia/",
+        "/sovereign-ai-in-practice-automate-document-summarization-with-ionos-ai-model-hub-and-nextcloud/",
+        "/ai-maturity-where-enterprises-stand-today/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/how-to-implement-event-driven-architecture",
+      "confidence": 57,
+      "page_title": "How To Implement Event-Driven Architecture: Models, Trade-Offs, and Operational Realities",
+      "ideas": [
+        "What is event-driven architecture?",
+        "Event-driven architecture components",
+        "Implementing your event-driven architecture",
+        "Event-driven architecture challenges",
+        "Build an event-driven system that scales with you",
+        "Share with us"
+      ],
+      "summary": "A user checking out a cart, a confirmation notification being sent, and the decreasing of inventory levels are just a few of the typical actions seen in modern applications.",
+      "published_date": "May 21, 2026",
+      "article_urls": [
+        "/author/yulia/",
+        "/ai-maturity-where-enterprises-stand-today/",
+        "/n8n-sap/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/ai-maturity-where-enterprises-stand-today",
+      "confidence": 57,
+      "page_title": "AI Maturity - Where Enterprises Stand Today",
+      "ideas": [
+        "Share with us"
+      ],
+      "summary": "Ninety-two percent of C-suite leaders say they are fully confident in their AI return on investment. Yet 58% admit there is no clear owner of AI in their organization, 75% lack governance frameworks, and only 12% of CEOs have achieved both revenue growth and cost reduction from AI. The gap between confidence and results is the defining challenge of enterprise AI in 2026.",
+      "published_date": "May 21, 2026",
+      "article_urls": [
+        "/make-ai-agents-more-reliable-and-restrict-the-actions-they-can-take/",
+        "/how-to-implement-event-driven-architecture/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/telegram-bots",
+      "confidence": 71,
+      "page_title": "Top 15 Telegram Bots You Need to Try (And How to Build Your Own!)",
+      "ideas": [
+        "15 best Telegram bots",
+        "How to make Telegram bots?",
+        "How to make Telegram bots with n8n?",
+        "Make your personal AI-powered Telegram assistant",
+        "What’s next?",
+        "Share with us"
+      ],
+      "summary": "Did you know that Telegram has experienced phenomenal growth over the last decade?",
+      "published_date": "November 21, 2024",
+      "tools_mentioned": [
+        "CombinedMessage",
+        "Message Type",
+        "Source Type",
+        "{{ $json.CombinedMessage }}",
+        "chat_with_{{ $('Listen for incoming events').first().json.message.chat.id }}",
+        "{{ $json.output }}",
+        "{{ $('Listen for incoming events').first().json.message.from.id }}",
+        "{{ $('AI Agent').item.json.output.replace(/&/g, \"&amp;\").replace(/>/g, \"&gt;\").replace(/</g, \"&lt;\").replace(/\"/g, \"&quot;\") }}"
+      ],
+      "article_urls": [
+        "/author/yulia/",
+        "/author/eduard/",
+        "/twitter-bot/",
+        "/aiops-tools/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/open-source-chatbot",
+      "confidence": 57,
+      "page_title": "Top 8 open-source chatbot builders for developers",
+      "ideas": [
+        "8 best open-source chatbots",
+        "What to look for in an open-source chatbot",
+        "Build your own chatbot with n8n",
+        "What’s next?",
+        "Share with us"
+      ],
+      "summary": "Did you know that chatbots have been existing for about 60 years now? In the modern era, they are much more useful and powerful and even mission-critical for companies’ survival.",
+      "published_date": "August 22, 2023",
+      "article_urls": [
+        "/author/yulia/",
+        "/author/eduard/",
+        "/how-to-push-code-to-github/",
+        "/n8n-execution-advantage/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/open-source-low-code-platforms",
+      "confidence": 57,
+      "page_title": "7 best open-source low-code platforms",
+      "ideas": [
+        "What is open-source?",
+        "What is an open-source low-code development platform?",
+        "7 best open-source low-code platforms",
+        "Automation tools",
+        "Database platforms",
+        "Backend tools",
+        "Dashboard builders",
+        "n8n: Source-available low-code platform",
+        "Final thought",
+        "What’s next?",
+        "Share with us"
+      ],
+      "summary": "The low-code market is booming!",
+      "published_date": "March 3, 2023",
+      "article_urls": [
+        "/author/eduard/",
+        "/author/yulia/",
+        "/import-csv-into-postgresql/",
+        "/api-integration/"
+      ]
+    },
+    {
+      "url": "https://blog.n8n.io/open-source-llm",
+      "confidence": 71,
+      "page_title": "The 11 best open-source LLMs for 2025",
+      "ideas": [
+        "Are there any open-source LLMs?",
+        "What are the advantages and disadvantages of open-source LLMs?",
+        "What is the best open-source LLM?",
+        "Getting started with LangChain and open-source LLMs in n8n",
+        "What’s next?",
+        "Share with us"
+      ],
+      "summary": "Open-source models are changing the LLM landscape, promising better security, cost-efficiency, and customization for AI deployments. While ChatGPT has over 180 million users, on-premises solutions already control more than half of the LLM market, with projections indicating continued growth in the coming years.",
+      "published_date": "February 10, 2025",
+      "tools_mentioned": [
+        "Please analyse the incoming user request. Extract information according to the JSON schema. Today is: {{ $now.toISO() }}",
+        "mistral-nemo:latest",
+        "{{ $json.output }}",
+        "Hi, my name is John. I'd like to be contacted via E-mail at john.smith@example.com regarding my recent order #12345."
+      ],
+      "article_urls": [
+        "/author/yulia/",
+        "/author/eduard/",
+        "/ai-agents/",
+        "/2024-in-review/"
+      ]
+    }
+  ]
+}

@@ -1,317 +1,442 @@
 /**
  * selectors.ts
- * CSS selector rule sets for Cheerio-based extraction.
+ * CSS selector rule registry for every schema.
  */
 
-export interface SelectorField {
-  selectors: string[];
-  extract?: "text" | "href" | "src" | "attr" | "html" | "number" | "boolean";
-  attr?: string;
-  multiple?: boolean;
-  transform?: (val: string) => unknown;
-}
+export type FieldRule =
+  | { type: "text"; selectors: string[] }
+  | { type: "attr"; selectors: string[]; attr: string }
+  | { type: "bool"; selectors: string[]; trueValues?: string[] }
+  | { type: "number"; selectors: string[] }
+  | { type: "list"; selectors: string[]; limit?: number }
+  | { type: "table"; selectors: string[] }
+  | { type: "rating"; selectors: string[] };
 
-export type SelectorSchema = Record<string, SelectorField>;
+export type SchemaRules = Record<string, FieldRule>;
+
+export const WORD_RATINGS: Record<string, number> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5,
+  One: 1, Two: 2, Three: 3, Four: 4, Five: 5,
+};
 
 // ─── Product ──────────────────────────────────────────────────────────────────
-
-export const productSelectors: SelectorSchema = {
+export const productRules: SchemaRules = {
   product_name: {
+    type: "text",
     selectors: [
-      "h1.product_title", "h1[itemprop='name']", ".product-title h1",
-      ".pdp-title", "#productTitle", "h1.title", "h1",
+      "h1.product_title", "h1#productTitle", "h1.product-title",
+      ".product-name h1", ".product-single__title", "h1.entry-title",
+      '[itemprop="name"]', "h1",
     ],
-    extract: "text",
   },
   price: {
+    type: "number",
     selectors: [
-      ".price ins .amount", ".woocommerce-Price-amount", "span[itemprop='price']",
-      ".price-tag", "#priceblock_ourprice", ".a-price-whole", "[data-price]",
-      "p.price_color", ".price_color", ".product-price", "[class*='price']", ".price",
+      "p.price_color", ".price_color",
+      ".woocommerce-Price-amount", "#priceblock_ourprice",
+      "#priceblock_dealprice", ".price--main",
+      '[itemprop="price"]', ".product-price", ".price",
     ],
-    extract: "text",
-    transform: (v) => parseFloat(v.replace(/[^0-9.]/g, "")) || null,
   },
   original_price: {
-    selectors: [".price del .amount", ".original-price", ".price__compare", "s.price"],
-    extract: "text",
-    transform: (v) => parseFloat(v.replace(/[^0-9.]/g, "")) || null,
+    type: "number",
+    selectors: [
+      ".woocommerce-Price-amount del", ".price--compare",
+      ".compare-at-price", "#listPrice", ".a-text-strike",
+    ],
+  },
+  currency: {
+    type: "text",
+    selectors: [
+      '[itemprop="priceCurrency"]',
+      ".woocommerce-Price-currencySymbol",
+    ],
   },
   in_stock: {
+    type: "bool",
     selectors: [
-      ".instock", ".instock.availability", ".stock", ".availability",
-      "[itemprop='availability']", ".product-availability", "#availability",
+      ".instock", ".instock.availability", ".stock",
+      ".woocommerce-stock", "#availability",
+      '[itemprop="availability"]', ".product-availability",
     ],
-    extract: "text",
-    transform: (v) => !/(out of stock|unavailable|sold out)/i.test(v),
-  },
-  rating: {
-    selectors: [
-      "[itemprop='ratingValue']", ".average-rating", ".product-rating",
-      ".star-rating", "[class*='star-rating']",
-    ],
-    extract: "attr",
-    attr: "class",
-    transform: (v) => {
-      const wordMap: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5 };
-      const match = v.toLowerCase().match(/\b(one|two|three|four|five)\b/);
-      if (match) return wordMap[match[1]];
-      const num = parseFloat(v);
-      return isNaN(num) ? null : num;
-    },
-  },
-  review_count: {
-    selectors: [
-      ".woocommerce-review-link", "[itemprop='reviewCount']",
-      ".review-count", "#acrCustomerReviewText",
-    ],
-    extract: "text",
-    transform: (v) => parseInt(v.replace(/[^0-9]/g, ""), 10) || null,
+    trueValues: ["in stock", "instock", "available", "add to cart", "buy now"],
   },
   description: {
+    type: "text",
     selectors: [
-      ".woocommerce-product-details__short-description", "[itemprop='description']",
-      ".product-description", "#productDescription", "article.product_page > p",
-      ".product_main ~ p", ".description p", ".description",
+      "article.product_page > p", "#product-description > p",
+      "#tab-description p",
+      ".woocommerce-product-details__short-description",
+      "#productDescription p", '[itemprop="description"]',
+      ".product-description", ".product__description",
     ],
-    extract: "text",
   },
   sku: {
-    selectors: ["[itemprop='sku']", ".sku", ".product-sku", "#product-sku"],
-    extract: "text",
+    type: "text",
+    selectors: ['[itemprop="sku"]', ".sku", ".product-sku", "#product_sku"],
   },
   brand: {
-    selectors: ["[itemprop='brand']", ".brand", ".product-brand", "#bylineInfo"],
-    extract: "text",
+    type: "text",
+    selectors: ['[itemprop="brand"]', ".brand", "#bylineInfo", ".product-meta__vendor"],
   },
-  images: {
+  rating: {
+    type: "rating",
     selectors: [
-      ".woocommerce-product-gallery img", ".product-images img",
-      "[itemprop='image']", ".product-image img",
+      "p.star-rating", ".star-rating",
+      '[itemprop="ratingValue"]', ".a-icon-star span",
+      ".woocommerce-product-rating .rating",
     ],
-    extract: "src",
-    multiple: true,
+  },
+  review_count: {
+    type: "number",
+    selectors: [
+      '[itemprop="reviewCount"]', ".woocommerce-review-link",
+      "#acrCustomerReviewText", ".review-count",
+    ],
   },
   features: {
+    type: "table",
     selectors: [
-      ".woocommerce-product-details__short-description li", "#feature-bullets li",
-      ".product-features li", ".product-description li",
-      "table.table tr", ".product_main ul li",
+      "table.table", "table.product_attributes",
+      "#productDetails_techSpec_section_1 tr",
+      "#feature-bullets li", ".product-features li",
+      ".woocommerce-product-attributes tr",
     ],
-    extract: "text",
-    multiple: true,
+  },
+  images: {
+    type: "list",
+    selectors: [
+      ".woocommerce-product-gallery img", "#imgTagWrapperId img",
+      ".product__media img", "[data-zoom-image]", ".product-image img",
+    ],
+    limit: 5,
   },
 };
 
-// ─── Article / Blog ───────────────────────────────────────────────────────────
-
-export const articleSelectors: SelectorSchema = {
+// ─── Article ──────────────────────────────────────────────────────────────────
+export const articleRules: SchemaRules = {
   title: {
+    type: "text",
     selectors: [
-      "h1.entry-title", "h1.post-title", "article h1",
-      "[itemprop='headline']", "h1",
+      "h1.post-title", "h1.entry-title", "h1.article-title",
+      '[itemprop="headline"]', "article h1", "h1",
     ],
-    extract: "text",
   },
   author: {
+    type: "text",
     selectors: [
-      "a[href*='/author/']",
-      ".author-name",
-      "[data-testid='author-name']",
-      ".byline a",
-      "[itemprop='author']",
-      "[rel='author']",
-      ".post-author",
-      ".entry-author",
-      "span.author",
-      ".byline",
+      '[itemprop="author"]', ".author-name", ".byline",
+      '[rel="author"]', ".post-author",
     ],
-    extract: "text",
-    multiple: true,
   },
   published_date: {
+    type: "text",
     selectors: [
-      "time",
-      "time[datetime]",
-      ".post-date",
-      "[data-testid='publish-date']",
-      "[itemprop='datePublished']",
-      ".entry-date",
-      ".published",
+      '[itemprop="datePublished"]', "time[datetime]",
+      ".post-date", ".entry-date", ".article-date",
     ],
-    extract: "text",
   },
   summary: {
+    type: "text",
     selectors: [
-      "[itemprop='description']",
-      "meta[name='description']",
-      ".post-excerpt",
-      ".entry-summary",
+      ".post-excerpt", '[itemprop="description"]',
+      "meta[name='description']", "article p:first-of-type",
     ],
-    extract: "attr",
-    attr: "content",
+  },
+  content: {
+    type: "text",
+    selectors: [
+      "article .entry-content", ".post-content",
+      '[itemprop="articleBody"]', "article", "main",
+    ],
   },
   tags: {
-    selectors: [
-      ".post-tags a", ".article-tags a", ".entry-tags a",
-      ".tags a", "[rel='tag']", ".tag-list a",
-    ],
-    extract: "text",
-    multiple: true,
+    type: "list",
+    selectors: [".post-tags a", ".tags a", '[rel="tag"]', ".article-tags a"],
+    limit: 10,
   },
   key_points: {
-    selectors: [
-      "article h2", "article h3",
-      ".entry-content h2", ".post-content h2",
-    ],
-    extract: "text",
-    multiple: true,
+    type: "list",
+    selectors: ["article h2", "article h3", ".key-points li", ".summary li"],
+    limit: 10,
   },
 };
-
+content: {
+  selectors: [
+    "article .post-content",
+    ".entry-content",
+    "article p",
+    ".post-body",
+    "main article",
+  ],
+  extract: "text",
+},
 // ─── Job Listing ──────────────────────────────────────────────────────────────
-
-export const jobSelectors: SelectorSchema = {
+export const jobRules: SchemaRules = {
   title: {
-    selectors: [
-      "h1.job-title", "[itemprop='title']", ".posting-headline h2",
-      ".job-header h1", "h1",
-    ],
-    extract: "text",
+    type: "text",
+    selectors: ["h1.posting-headline", ".job-title", '[itemprop="title"]', "h1"],
   },
   company: {
-    selectors: [
-      "[itemprop='hiringOrganization']", ".company-name",
-      ".employer-name", ".posting-categories .sort-by-team",
-    ],
-    extract: "text",
+    type: "text",
+    selectors: [".company-name", '[itemprop="hiringOrganization"]', ".employer"],
   },
   location: {
-    selectors: [
-      "[itemprop='jobLocation']", ".location", ".job-location",
-      ".posting-categories .sort-by-location",
-    ],
-    extract: "text",
+    type: "text",
+    selectors: [".location", '[itemprop="jobLocation"]', ".job-location"],
   },
-  remote: {
-    selectors: [".location", ".remote-label", ".work-type"],
-    extract: "text",
-    transform: (v) => /remote/i.test(v),
+  salary: {
+    type: "text",
+    selectors: [".salary", '[itemprop="baseSalary"]', ".compensation", ".pay"],
   },
-  employment_type: {
-    selectors: [
-      "[itemprop='employmentType']", ".employment-type",
-      ".job-type", ".posting-categories .sort-by-commitment",
-    ],
-    extract: "text",
-  },
-  salary_min: {
-    selectors: ["[itemprop='baseSalary']", ".salary-range", ".compensation"],
-    extract: "text",
-    transform: (v) => {
-      const m = v.match(/[\$£€]?\s*([\d,]+)/);
-      return m ? parseInt(m[1].replace(/,/g, ""), 10) : null;
-    },
-  },
-  required_skills: {
-    selectors: [
-      ".requirements li", ".qualifications li",
-      ".skills li", ".job-requirements li",
-    ],
-    extract: "text",
-    multiple: true,
-  },
-  responsibilities: {
-    selectors: [
-      ".responsibilities li", ".role-description li", ".job-description li",
-    ],
-    extract: "text",
-    multiple: true,
-  },
-  posted_date: {
-    selectors: [
-      "[itemprop='datePosted']", "time[datetime]",
-      ".posted-date", ".posting-date",
-    ],
-    extract: "attr",
-    attr: "datetime",
-  },
-};
-
-// ─── Pricing ──────────────────────────────────────────────────────────────────
-
-export const pricingSelectors: SelectorSchema = {
-  company_name: {
-    selectors: ["meta[property='og:site_name']", "header .logo", ".brand"],
-    extract: "attr",
-    attr: "content",
-  },
-};
-
-// ─── Review ───────────────────────────────────────────────────────────────────
-
-export const reviewSelectors: SelectorSchema = {
-  overall_rating: {
-    selectors: [
-      "[itemprop='ratingValue']", ".overall-rating",
-      ".average-rating", ".star-rating",
-    ],
-    extract: "text",
-    transform: (v) => parseFloat(v) || null,
-  },
-  total_reviews: {
-    selectors: [
-      "[itemprop='reviewCount']", ".total-reviews", ".review-count",
-    ],
-    extract: "text",
-    transform: (v) => parseInt(v.replace(/[^0-9]/g, ""), 10) || null,
-  },
-};
-
-// ─── SaaS Ideas ───────────────────────────────────────────────────────────────
-
-export const saasIdeasSelectors: SelectorSchema = {
-  page_topic: {
-    selectors: ["h1", "title", "meta[property='og:title']"],
-    extract: "text",
-  },
-  source_type: {
-    selectors: ["meta[property='og:type']", ".post-type", ".content-type"],
-    extract: "attr",
-    attr: "content",
-  },
-};
-
-// ─── Generic / Fallback ───────────────────────────────────────────────────────
-
-export const genericSelectors: SelectorSchema = {
-  title: {
-    selectors: ["h1", "title", "meta[property='og:title']"],
-    extract: "text",
+  job_type: {
+    type: "text",
+    selectors: [".employment-type", ".job-type", '[itemprop="employmentType"]'],
   },
   description: {
-    selectors: [
-      "meta[name='description']", "meta[property='og:description']",
-    ],
-    extract: "attr",
-    attr: "content",
+    type: "text",
+    selectors: [".posting-description", ".job-description", '[itemprop="description"]'],
   },
-  main_content: {
-    selectors: ["main", "article", ".content", "#content", "body"],
-    extract: "text",
+  skills: {
+    type: "list",
+    selectors: [
+      ".posting-requirements li", ".requirements li",
+      ".skills li", ".qualifications li",
+    ],
+    limit: 15,
+  },
+  responsibilities: {
+    type: "list",
+    selectors: [".posting-requirements li", ".responsibilities li", ".duties li"],
+    limit: 10,
   },
 };
 
-// ─── Registry ─────────────────────────────────────────────────────────────────
+// ─── SaaS / AI Ideas — Ghost CMS + generic blogs ─────────────────────────────
+export const saasIdeasRules: SchemaRules = {
+  // Article title (single post) or site title (index)
+  page_title: {
+    type: "text",
+    selectors: [
+      "h1.gh-article-title",         // Ghost single post
+      "h1.article-title",
+      "h1",
+      "title",
+    ],
+  },
+  // Section headings inside an article = the actual ideas/topics
+  ideas: {
+    type: "list",
+    selectors: [
+      ".gh-content h2",              // Ghost article body
+      ".gh-content h3",
+      ".post-content h2",
+      ".post-content h3",
+      "article .content h2",
+      "article .content h3",
+      ".gh-card-title",              // Ghost blog index cards
+      ".post-card-title",
+      ".article-card h2",
+      "article h2",
+      "article h3",
+      "main h2",
+      "main h3",
+    ],
+    limit: 30,
+  },
+  // Article summary / excerpt
+  summary: {
+    type: "text",
+    selectors: [
+      ".gh-article-excerpt",         // Ghost
+      ".post-card-excerpt",
+      ".gh-content > p:first-of-type",
+      ".post-content > p:first-of-type",
+      "article p:first-of-type",
+      "main p:first-of-type",
+      "meta[name='description']",
+    ],
+  },
+  // Tags / categories on the article
+  categories: {
+    type: "list",
+    selectors: [
+      ".gh-article-tag",             // Ghost single post tag
+      ".post-card-tags",             // Ghost index card tags
+      ".article-tag",
+      ".post-tag",
+      "a.tag",
+      ".tags a",
+      '[rel="tag"]',
+      ".category a",
+      ".label",
+    ],
+    limit: 10,
+  },
+  // Author name
+  author: {
+    type: "text",
+    selectors: [
+      ".gh-article-author-name",     // Ghost
+      ".author-name",
+      ".post-author-name",
+      '[itemprop="author"]',
+      '[rel="author"]',
+      ".byline",
+      ".author",
+    ],
+  },
+  // Publish date
+  published_date: {
+    type: "text",
+    selectors: [
+      "time[datetime]",
+      ".gh-article-meta time",
+      ".post-date",
+      ".entry-date",
+      '[itemprop="datePublished"]',
+    ],
+  },
+  // Code / tool names mentioned in article
+  tools_mentioned: {
+    type: "list",
+    selectors: [
+      ".gh-content code",            // Ghost inline code = tool names
+      ".post-content code",
+      "article code",
+      ".kg-code-card code",
+      "code",
+    ],
+    limit: 20,
+  },
+};
 
-export const SELECTOR_MAP: Record<string, SelectorSchema> = {
-  product: productSelectors,
-  article: articleSelectors,
-  job: jobSelectors,
-  pricing: pricingSelectors,
-  review: reviewSelectors,
-  saas_ideas: saasIdeasSelectors,
-  blog: articleSelectors,
-  company: genericSelectors,
-  generic: genericSelectors,
+// ─── Blog Post ────────────────────────────────────────────────────────────────
+export const blogRules: SchemaRules = {
+  title: { type: "text", selectors: ["h1"] },
+  author: {
+    type: "text",
+    selectors: ["[rel='author']", ".author", ".byline", '[itemprop="author"]'],
+  },
+  date: {
+    type: "text",
+    selectors: ["time[datetime]", ".date", ".published", '[itemprop="datePublished"]'],
+  },
+  tags: {
+    type: "list",
+    selectors: [".tags a", ".categories a", '[rel="tag"]'],
+    limit: 10,
+  },
+  tools_mentioned: {
+    type: "list",
+    selectors: ["code", ".tool", ".integration", "a[href*='github']"],
+    limit: 15,
+  },
+  summary: {
+    type: "text",
+    selectors: ["article p:first-of-type", ".excerpt", "meta[name='description']"],
+  },
+};
+
+// ─── Company Profile ──────────────────────────────────────────────────────────
+export const companyRules: SchemaRules = {
+  name: { type: "text", selectors: ["h1", ".company-name", '[itemprop="name"]'] },
+  description: {
+    type: "text",
+    selectors: [".company-description", ".about", '[itemprop="description"]', "p:first-of-type"],
+  },
+  founded: {
+    type: "text",
+    selectors: [".founded", '[itemprop="foundingDate"]', ".year-founded"],
+  },
+  funding: { type: "text", selectors: [".funding", ".raised", ".total-funding"] },
+  employees: { type: "text", selectors: [".employees", ".team-size", ".headcount"] },
+  website: {
+    type: "attr",
+    selectors: ["[itemprop='url']", ".website a", ".company-url"],
+    attr: "href",
+  },
+  products: {
+    type: "list",
+    selectors: [".products li", ".services li", ".solutions li"],
+    limit: 10,
+  },
+  competitors: {
+    type: "list",
+    selectors: [".competitors li", ".alternatives li", ".similar-companies li"],
+    limit: 10,
+  },
+};
+
+// ─── Pricing Page ─────────────────────────────────────────────────────────────
+export const pricingRules: SchemaRules = {
+  product_name: { type: "text", selectors: ["h1", ".pricing-title"] },
+  tiers: {
+    type: "list",
+    selectors: [".pricing-card h2", ".plan-name", ".tier-name", ".pricing-table th"],
+    limit: 10,
+  },
+  prices: {
+    type: "list",
+    selectors: [".pricing-card .price", ".plan-price", ".amount", ".pricing-table td.price"],
+    limit: 10,
+  },
+  features: {
+    type: "list",
+    selectors: [".pricing-card li", ".plan-features li", ".feature-list li"],
+    limit: 30,
+  },
+};
+
+// ─── Review Page ──────────────────────────────────────────────────────────────
+export const reviewRules: SchemaRules = {
+  product_name: { type: "text", selectors: ["h1", '[itemprop="name"]'] },
+  overall_rating: {
+    type: "number",
+    selectors: [
+      '[itemprop="ratingValue"]', ".overall-rating",
+      ".aggregate-rating", ".rating-score",
+    ],
+  },
+  total_reviews: {
+    type: "number",
+    selectors: ['[itemprop="reviewCount"]', ".total-reviews", ".review-count"],
+  },
+  pros: {
+    type: "list",
+    selectors: [".pros li", ".advantages li", ".positives li"],
+    limit: 10,
+  },
+  cons: {
+    type: "list",
+    selectors: [".cons li", ".disadvantages li", ".negatives li"],
+    limit: 10,
+  },
+  summary: {
+    type: "text",
+    selectors: [".review-summary", ".verdict", ".conclusion p"],
+  },
+};
+
+// ─── Schema Registry ──────────────────────────────────────────────────────────
+export const SCHEMA_RULES: Record<string, SchemaRules> = {
+  product:    productRules,
+  article:    articleRules,
+  job:        jobRules,
+  saas_ideas: saasIdeasRules,
+  blog:       blogRules,
+  company:    companyRules,
+  pricing:    pricingRules,
+  review:     reviewRules,
+};
+
+export const SCHEMA_DESCRIPTIONS: Record<string, string> = {
+  product:    "E-commerce product pages (name, price, stock, features)",
+  article:    "News articles (title, author, summary, key points)",
+  job:        "Job listings (title, skills, salary, responsibilities)",
+  saas_ideas: "AI/SaaS business ideas from blogs and directories",
+  blog:       "Blog posts (tools mentioned, companies, code examples)",
+  company:    "Company profiles (funding, products, competitors)",
+  pricing:    "SaaS pricing pages (tiers, features, limits)",
+  review:     "Review pages (ratings, pros, cons, reviewer details)",
 };

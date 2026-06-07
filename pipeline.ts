@@ -1,307 +1,312 @@
 /**
  * pipeline.ts
- * Unified scraping pipeline — Traditional + Optional AI fallback.
+ * Universal scrape pipeline: fetch → clean → extract → result
  *
- * Extraction order:
- *  1. Fetch page (Axios fast / Playwright stealth / Network intercept)
- *  2. Cheerio CSS extraction (instant, zero cost)
- *  3. If intercept mode captured JSON → merge it in
- *  4. [Optional] If confidence < threshold → fall back to Ollama AI
- *
- * This gives you the best of both worlds:
- *  - Speed and zero cost for standard pages
- *  - AI fallback for messy/dynamic pages that CSS can't parse
+ * Modes:
+ *   cheerio  — CSS selectors only, ~1ms, zero AI cost (site-specific accuracy)
+ *   hybrid   — cheerio first, AI fallback if confidence < threshold (RECOMMENDED)
+ *   ai       — Ollama only, universal, works on any site
  */
 
-import { fetchPage, type FetchOptions, type FetchMode } from "./fetcher";
-import { extractWithCheerio, type CheerioResult } from "./extractor-cheerio";
+import { fetchPage } from "./fetcher";
 import { htmlToMarkdown } from "./cleaner";
+import { extractWithCheerio } from "./extractor-cheerio";
+import { extractWithOllama } from "./extractor";
+import { SCHEMA_RULES } from "./selectors";
+import { SCHEMA_MAP } from "./schemas";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export type ExtractionMode = "cheerio" | "ai" | "hybrid" | "intercept" | "markdown";
+export type PipelineMode = "cheerio" | "hybrid" | "ai";
 
 export interface PipelineOptions {
-  /** Which schema to extract (product, article, job, saas_ideas, etc.) */
+  mode?: PipelineMode;
   schema: string;
-  /** Extraction engine */
-  extractionMode?: ExtractionMode;
-  /** Fetch mode */
-  fetchMode?: FetchMode;
-  /** Proxy URL */
-  proxy?: string;
-  /** Timeout in ms */
-  timeoutMs?: number;
-  /** For intercept mode */
-  interceptPattern?: RegExp;
-  /** Ollama model (used only in ai/hybrid modes) */
   model?: string;
-  /** Confidence threshold below which hybrid mode triggers AI (0-1) */
-  aiThreshold?: number;
-  /** Verbose logging */
+  hybridThreshold?: number;
   verbose?: boolean;
+  fetchMode?: "auto" | "fast" | "stealth" | "intercept";
 }
 
-export interface PipelineResult<T = Record<string, unknown>> {
+export interface PipelineResult {
   url: string;
-  finalUrl: string;
-  schema: string;
-  extractionMode: ExtractionMode;
-  fetchMode: FetchMode;
-  data: T;
-  markdown?: string;
+  data: Record<string, unknown>;
   confidence: number;
-  usedAiFallback: boolean;
-  structuredData: unknown[];
-  interceptedData?: unknown[];
-  statusCode: number | null;
-  durationMs: number;
+  found: string[];
+  missing: string[];
+  method: "cheerio" | "ai" | "hybrid";
+  inputTokens: number;
+  outputTokens: number;
   fetchMs: number;
   extractMs: number;
+  totalMs: number;
+  truncated: boolean;
 }
 
-// ─── Pipeline ─────────────────────────────────────────────────────────────────
-
-export async function runPipeline<T = Record<string, unknown>>(
+export async function runPipeline(
   url: string,
   opts: PipelineOptions
-): Promise<PipelineResult<T>> {
-  const {
-    schema,
-    extractionMode = "cheerio",
-    fetchMode = "auto",
-    proxy,
-    timeoutMs = 30_000,
-    interceptPattern,
-    model = "qwen2.5:7b",
-    aiThreshold = 0.6,
-    verbose = true,
-  } = opts;
+): Promise<PipelineResult> {
+  const start = Date.now();
+  const mode = opts.mode ?? "hybrid";
+  const model = opts.model ?? "qwen2.5:7b";
+  const threshold = opts.hybridThreshold ?? 70;
+  const verbose = opts.verbose ?? false;
 
-  const totalStart = Date.now();
+  const hasCheerioSchema = !!SCHEMA_RULES[opts.schema];
+  const hasAiSchema = !!SCHEMA_MAP[opts.schema];
 
-  // ── Step 1: Fetch ──────────────────────────────────────────────────────────
-
-  const fetchOpts: FetchOptions = {
-    mode: extractionMode === "intercept" ? "intercept" : fetchMode,
-    proxy,
-    timeoutMs,
-    interceptPattern,
-  };
-
-  if (verbose) console.log(`[1/3] Fetching (${fetchOpts.mode}): ${url}`);
+  // ── Stage 1: Fetch ──────────────────────────────────────────────────────────
+  if (verbose) console.log(`[1/3] Fetching: ${url}`);
   const fetchStart = Date.now();
-  const fetched = await fetchPage(url, fetchOpts);
+  const fetched = await fetchPage(url, { mode: opts.fetchMode ?? "auto" });
   const fetchMs = Date.now() - fetchStart;
 
   if (verbose) {
+    const fetchMode = fetched.fetchMode ?? opts.fetchMode ?? "fast";
     console.log(
-      `      → ${fetched.html.length.toLocaleString()} chars | HTTP ${fetched.statusCode ?? "?"} | ${fetchMs}ms | mode: ${fetched.mode}`
+      `      → ${fetched.html.length.toLocaleString()} chars | HTTP ${fetched.statusCode} | ${fetchMs}ms | mode: ${fetchMode}`
     );
-    if (fetched.interceptedJson && fetched.interceptedJson.length > 0) {
-      console.log(`      → Intercepted ${fetched.interceptedJson.length} API response(s)`);
-    }
   }
 
-  // ── Step 2: Extract ────────────────────────────────────────────────────────
-
-  let data: Record<string, unknown> = {};
-  let confidence = 0;
-  let structuredData: unknown[] = [];
-  let interceptedData: unknown[] | undefined;
-  let usedAiFallback = false;
-  let markdown: string | undefined;
+  // ── Stage 2: Extract ────────────────────────────────────────────────────────
   const extractStart = Date.now();
 
-  if (verbose) console.log(`[2/3] Extracting with Cheerio (schema: ${schema})`);
+  // Cheerio-only mode
+  if (mode === "cheerio") {
+    if (!hasCheerioSchema) {
+      throw new Error(`Schema "${opts.schema}" not in selectors.ts. Available: ${Object.keys(SCHEMA_RULES).join(", ")}`);
+    }
+    if (verbose) console.log(`[2/3] Extracting with Cheerio (schema: ${opts.schema})`);
+    const cr = extractWithCheerio(fetched.html, opts.schema);
+    const extractMs = Date.now() - extractStart;
+    if (verbose) {
+      console.log(`      → Confidence: ${cr.confidence}% | Found: [${cr.found.join(", ")}]`);
+      console.log(`      → Done in ${extractMs}ms`);
+    }
+    return {
+      url, data: cr.data, confidence: cr.confidence,
+      found: cr.found, missing: cr.missing,
+      method: "cheerio", inputTokens: 0, outputTokens: 0,
+      fetchMs, extractMs, totalMs: Date.now() - start, truncated: false,
+    };
+  }
 
-  const cheerioResult: CheerioResult = extractWithCheerio(
-    fetched.html,
-    schema,
-    fetched.interceptedJson
-  );
+  // AI-only mode
+  if (mode === "ai") {
+    if (verbose) console.log(`[2/3] Extracting with Ollama (schema: ${opts.schema})`);
+    return runAiExtraction(url, fetched.html, opts, fetchMs, start, verbose);
+  }
 
-  data = cheerioResult.data as Record<string, unknown>;
-  confidence = cheerioResult.confidence;
-  structuredData = cheerioResult.structuredData;
-  interceptedData = cheerioResult.interceptedData;
+  // Hybrid mode: cheerio first, AI fallback
+  if (mode === "hybrid") {
+    let cheerioConf = 0;
+    let cheerioData: Record<string, unknown> = {};
+
+    if (hasCheerioSchema) {
+      if (verbose) console.log(`[2/3] Extracting with Cheerio (schema: ${opts.schema})`);
+      const cr = extractWithCheerio(fetched.html, opts.schema);
+      const extractMs = Date.now() - extractStart;
+      cheerioConf = cr.confidence;
+      cheerioData = cr.data;
+
+      if (verbose) {
+        console.log(`      → Confidence: ${cr.confidence}% | Found: [${cr.found.join(", ")}]`);
+        console.log(`      → Done in ${extractMs}ms`);
+      }
+
+      // Good enough — return cheerio result
+      if (cr.confidence >= threshold) {
+        return {
+          url, data: cr.data, confidence: cr.confidence,
+          found: cr.found, missing: cr.missing,
+          method: "cheerio", inputTokens: 0, outputTokens: 0,
+          fetchMs, extractMs, totalMs: Date.now() - start, truncated: false,
+        };
+      }
+
+      if (verbose) {
+        console.log(`      ⚠ Confidence ${cr.confidence}% < ${threshold}% — running AI fallback`);
+      }
+    } else {
+      if (verbose) console.log(`[2/3] No Cheerio schema for "${opts.schema}" — going straight to AI`);
+    }
+
+    // AI fallback — merge cheerio partial results with AI output
+    const aiResult = await runAiExtraction(url, fetched.html, opts, fetchMs, start, verbose);
+
+    // Merge: cheerio fields take priority (they're exact), AI fills the gaps
+    const merged = { ...aiResult.data, ...cheerioData };
+
+    // Recalculate confidence on merged result
+    const schemaFields = Object.keys(SCHEMA_RULES[opts.schema] ?? {});
+    const found = schemaFields.length > 0
+      ? schemaFields.filter((f) => merged[f] !== undefined)
+      : Object.keys(merged);
+    const missing = schemaFields.filter((f) => merged[f] === undefined);
+    const confidence = schemaFields.length > 0
+      ? Math.round((found.length / schemaFields.length) * 100)
+      : Math.min(100, cheerioConf + 20);
+
+    return {
+      ...aiResult,
+      data: merged,
+      confidence,
+      found,
+      missing,
+      method: "hybrid",
+    };
+  }
+
+  throw new Error(`Unknown mode: ${mode}`);
+}
+
+// ─── AI extraction (Ollama) ───────────────────────────────────────────────────
+async function runAiExtraction(
+  url: string,
+  html: string,
+  opts: PipelineOptions,
+  fetchMs: number,
+  startTime: number,
+  verbose: boolean
+): Promise<PipelineResult> {
+  // Get schema — if not in SCHEMA_MAP, build a dynamic one from the schema name
+  let schema = SCHEMA_MAP[opts.schema];
+
+  if (!schema) {
+    // Dynamic schema: ask Ollama to extract based on schema name as a description
+    schema = buildDynamicSchema(opts.schema);
+  }
+
+  const cleaned = htmlToMarkdown(html);
+  const extractStart = Date.now();
 
   if (verbose) {
-    console.log(
-      `      → Confidence: ${(confidence * 100).toFixed(0)}% | Found: [${cheerioResult.fieldStats.found.join(", ")}]`
-    );
-    if (cheerioResult.fieldStats.missing.length > 0) {
-      console.log(`      → Missing:    [${cheerioResult.fieldStats.missing.join(", ")}]`);
-    }
+    console.log(`      → Markdown: ${cleaned.charCount.toLocaleString()} chars (~${cleaned.estimatedTokens} tokens)`);
   }
 
-  // ── Step 3: AI fallback (hybrid mode only) ─────────────────────────────────
-
-  if (extractionMode === "hybrid" && confidence < aiThreshold) {
-    if (verbose) {
-      console.log(
-        `[3/3] Confidence ${(confidence * 100).toFixed(0)}% < ${(aiThreshold * 100).toFixed(0)}% threshold → falling back to Ollama AI`
-      );
-    }
-
-    try {
-      const { htmlToMarkdown: clean } = await import("./cleaner");
-      const { SCHEMA_MAP } = await import("./schemas");
-      const { extractWithOllama } = await import("./extractor");
-
-      const { markdown: md } = clean(fetched.html);
-      markdown = md;
-
-      const schemaObj = (SCHEMA_MAP as Record<string, unknown>)[schema];
-      if (schemaObj) {
-        const aiResult = await extractWithOllama(md, schemaObj as any, model);
-        // Merge AI result over cheerio (AI wins on conflict)
-        data = { ...data, ...((aiResult.data as Record<string, unknown>) ?? {}) };
-        confidence = Math.max(confidence, 0.7); // trust AI result
-        usedAiFallback = true;
-        if (verbose) console.log(`      → AI extraction complete`);
-      }
-    } catch (err) {
-      if (verbose) console.warn(`      → AI fallback failed: ${err}`);
-    }
-  }
-
-  // ── Markdown mode: always produce clean markdown ───────────────────────────
-
-  if (extractionMode === "markdown" || opts.extractionMode === "markdown") {
-    const { markdown: md } = htmlToMarkdown(fetched.html);
-    markdown = md;
-    data = { markdown: md, url, title: data.title ?? null };
-    confidence = 1;
-  }
-
+  const aiResult = await extractWithOllama(cleaned.markdown, schema, opts.model ?? "qwen2.5:7b");
   const extractMs = Date.now() - extractStart;
 
   if (verbose) {
-    console.log(
-      `      → Extraction done in ${extractMs}ms${usedAiFallback ? " (with AI fallback)" : ""}`
-    );
+    console.log(`      → AI tokens: ${aiResult.inputTokens} in / ${aiResult.outputTokens} out | truncated: ${aiResult.truncated}`);
   }
+
+  const schemaFields = Object.keys(SCHEMA_RULES[opts.schema] ?? {});
+  const dataKeys = Object.keys(aiResult.data);
+  const found = schemaFields.length > 0
+    ? schemaFields.filter((k) => aiResult.data[k] !== undefined)
+    : dataKeys;
+  const missing = schemaFields.filter((k) => aiResult.data[k] === undefined);
+  const confidence = schemaFields.length > 0
+    ? Math.round((found.length / schemaFields.length) * 100)
+    : dataKeys.length > 0 ? 85 : 0; // AI extracted something = assume ~85% for unknown schemas
 
   return {
     url,
-    finalUrl: fetched.finalUrl,
-    schema,
-    extractionMode,
-    fetchMode: fetched.mode,
-    data: data as T,
-    markdown,
+    data: aiResult.data,
     confidence,
-    usedAiFallback,
-    structuredData,
-    interceptedData,
-    statusCode: fetched.statusCode,
-    durationMs: Date.now() - totalStart,
+    found,
+    missing,
+    method: "ai",
+    inputTokens: aiResult.inputTokens,
+    outputTokens: aiResult.outputTokens,
     fetchMs,
     extractMs,
+    totalMs: Date.now() - startTime,
+    truncated: aiResult.truncated,
   };
 }
 
-// ─── Batch pipeline ───────────────────────────────────────────────────────────
+// ─── Dynamic schema builder for unknown schema names ─────────────────────────
+function buildDynamicSchema(schemaName: string) {
+  // Build a generic extraction schema from the schema name
+  // e.g. "saas_ideas" → ask AI to extract ideas, title, summary, tools
+  const schemaPrompts: Record<string, { description: string; fields: Record<string, string> }> = {
+    saas_ideas: {
+      description: "Extract AI/SaaS business ideas, automation use cases, and tools from this page.",
+      fields: {
+        page_title: "Main title of the page or article",
+        ideas: "Array of business ideas, use cases, or automation opportunities mentioned",
+        summary: "Brief summary of the page content",
+        categories: "Array of topic categories or tags",
+        author: "Author name if present",
+        published_date: "Publication date if present",
+        tools_mentioned: "Array of tools, platforms, or technologies mentioned",
+      },
+    },
+    product: {
+      description: "Extract product information from this e-commerce page.",
+      fields: {
+        product_name: "Name of the product",
+        price: "Price as a number",
+        currency: "Currency code e.g. USD, GBP, INR",
+        in_stock: "Boolean whether product is in stock",
+        description: "Product description",
+        features: "Array of product features",
+        rating: "Star rating as a number",
+        sku: "Product SKU or ID",
+      },
+    },
+    article: {
+      description: "Extract article information from this blog or news page.",
+      fields: {
+        title: "Article headline",
+        author: "Author name",
+        published_date: "Publication date",
+        summary: "Article summary or excerpt",
+        key_points: "Array of main points or section headings",
+        tags: "Array of topic tags",
+      },
+    },
+    job: {
+      description: "Extract job listing details from this page.",
+      fields: {
+        title: "Job title",
+        company: "Company name",
+        location: "Job location",
+        salary: "Salary or compensation",
+        job_type: "Full-time, part-time, contract, etc.",
+        skills: "Array of required skills",
+        description: "Job description summary",
+      },
+    },
+  };
 
-export interface BatchPipelineOptions extends PipelineOptions {
-  concurrency?: number;
-  delayMs?: number;
-  retries?: number;
-  onPage?: (result: PipelineResult, index: number, total: number) => void;
-}
+  const template = schemaPrompts[schemaName] ?? {
+    description: `Extract key information related to "${schemaName.replace(/_/g, " ")}" from this page.`,
+    fields: {
+      title: "Main title or heading",
+      summary: "Brief summary of the content",
+      key_points: "Array of main points, items, or headings",
+      metadata: "Any relevant dates, authors, or categories",
+    },
+  };
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
-}
+  // Build JSON schema for Ollama
+  const properties: Record<string, unknown> = {};
+  const required: string[] = [];
 
-async function withRetry<T>(
-  fn: () => Promise<T>,
-  retries: number,
-  label: string
-): Promise<T> {
-  let lastErr: unknown;
-  for (let i = 0; i <= retries; i++) {
-    try {
-      return await fn();
-    } catch (err) {
-      lastErr = err;
-      if (i < retries) {
-        const wait = 1500 * (i + 1) + Math.random() * 500;
-        console.warn(`  [retry ${i + 1}/${retries}] ${label} in ${Math.round(wait)}ms`);
-        await sleep(wait);
-      }
+  for (const [field, desc] of Object.entries(template.fields)) {
+    if (field === "ideas" || field === "key_points" || field === "features" ||
+        field === "tags" || field === "skills" || field === "tools_mentioned" ||
+        field === "categories") {
+      properties[field] = { type: "array", items: { type: "string" }, description: desc };
+    } else if (field === "price" || field === "rating") {
+      properties[field] = { type: "number", description: desc };
+    } else if (field === "in_stock") {
+      properties[field] = { type: "boolean", description: desc };
+    } else {
+      properties[field] = { type: "string", description: desc };
     }
+    required.push(field);
   }
-  throw lastErr;
-}
 
-export interface BatchPipelineResult<T = Record<string, unknown>> {
-  url: string;
-  status: "success" | "error";
-  result?: PipelineResult<T>;
-  error?: string;
-  durationMs: number;
-}
-
-export async function runBatchPipeline<T = Record<string, unknown>>(
-  urls: string[],
-  opts: BatchPipelineOptions
-): Promise<BatchPipelineResult<T>[]> {
-  const { concurrency = 3, delayMs = 500, retries = 2, onPage, verbose = false } = opts;
-
-  const results: BatchPipelineResult<T>[] = [];
-  const queue = [...urls];
-  let active = 0;
-  let completed = 0;
-
-  return new Promise((resolve) => {
-    function next() {
-      while (active < concurrency && queue.length > 0) {
-        const url = queue.shift()!;
-        active++;
-        const start = Date.now();
-
-        const run = async () => {
-          if (delayMs > 0 && completed > 0) await sleep(delayMs);
-          try {
-            const result = await withRetry(
-              () => runPipeline<T>(url, { ...opts, verbose: false }),
-              retries,
-              url
-            );
-            const batchResult: BatchPipelineResult<T> = {
-              url,
-              status: "success",
-              result,
-              durationMs: Date.now() - start,
-            };
-            results.push(batchResult);
-            completed++;
-            if (verbose) console.log(`  ✓ [${completed}/${urls.length}] ${url} (${batchResult.durationMs}ms)`);
-            if (onPage) onPage(result, completed, urls.length);
-          } catch (err) {
-            const batchResult: BatchPipelineResult<T> = {
-              url,
-              status: "error",
-              error: err instanceof Error ? err.message : String(err),
-              durationMs: Date.now() - start,
-            };
-            results.push(batchResult);
-            completed++;
-            if (verbose) console.error(`  ✗ [${completed}/${urls.length}] ${url} → ${batchResult.error}`);
-          } finally {
-            active--;
-            if (queue.length === 0 && active === 0) resolve(results);
-            else next();
-          }
-        };
-
-        run();
-      }
-    }
-
-    if (urls.length === 0) return resolve([]);
-    next();
-  });
+  return {
+    name: `extract_${schemaName}`,
+    description: template.description,
+    input_schema: {
+      type: "object" as const,
+      properties,
+      required,
+    },
+  };
 }

@@ -1,212 +1,268 @@
 /**
  * crawler-v2.ts
- * Deep crawler built on the new pipeline.ts engine.
+ * BFS deep crawler using the cheerio/hybrid pipeline.
  */
 
-import { runPipeline, type PipelineOptions, type PipelineResult } from "./pipeline";
-import { URL } from "url";
+import * as http from "http";
+import * as https from "https";
+import { runPipeline } from "./pipeline";
+import type { PipelineOptions, PipelineResult } from "./pipeline";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export interface CrawlV2Options extends PipelineOptions {
+export interface CrawlOptions extends PipelineOptions {
   maxDepth?: number;
   maxPages?: number;
-  delayMs?: number;
   concurrency?: number;
-  includePattern?: RegExp;
-  excludePattern?: RegExp;
-  sameDomainOnly?: boolean;
-  onPage?: (result: CrawlV2PageResult) => void | Promise<void>;
+  delayMs?: number;
+  retries?: number;
 }
 
-export interface CrawlV2PageResult {
+export interface CrawlPageResult {
   url: string;
   depth: number;
   status: "success" | "error";
   result?: PipelineResult;
   error?: string;
-  linksFound: number;
   durationMs: number;
 }
 
-export interface CrawlV2Result {
-  seedUrl: string;
-  totalPages: number;
-  successCount: number;
-  errorCount: number;
+export interface CrawlSummary {
+  pages: CrawlPageResult[];
+  totalSuccess: number;
+  totalErrors: number;
   avgConfidence: number;
-  durationMs: number;
-  pages: CrawlV2PageResult[];
+  totalMs: number;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+export async function crawl(
+  seedUrl: string,
+  opts: CrawlOptions
+): Promise<CrawlSummary> {
+  const maxDepth = opts.maxDepth ?? 2;
+  const maxPages = opts.maxPages ?? 20;
+  const concurrency = opts.concurrency ?? 2;
+  const delayMs = opts.delayMs ?? 300;
+  const retries = opts.retries ?? 1;
 
-const SKIP_EXT = /\.(css|js|json|xml|pdf|zip|png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|mp4|mp3|exe|dmg)$/i;
+  const seedOrigin = getOrigin(seedUrl);
+  if (!seedOrigin) throw new Error(`Invalid seed URL: ${seedUrl}`);
 
-function shouldCrawl(url: string, opts: CrawlV2Options, seedDomain: string): boolean {
-  if (opts.sameDomainOnly !== false) {
-    try {
-      if (new URL(url).hostname !== seedDomain) return false;
-    } catch { return false; }
+  const visited = new Set<string>();
+  const results: CrawlPageResult[] = [];
+
+  const queue: Array<[string, number]> = [[normalizeUrl(seedUrl), 0]];
+  visited.add(normalizeUrl(seedUrl));
+
+  const overallStart = Date.now();
+  let pageCount = 0;
+
+  while (queue.length > 0 && pageCount < maxPages) {
+    const batch: Array<[string, number]> = [];
+    while (batch.length < concurrency && queue.length > 0 && pageCount + batch.length < maxPages) {
+      const item = queue.shift();
+      if (item) batch.push(item);
+    }
+
+    await Promise.all(
+      batch.map(async ([url, depth]) => {
+        pageCount++;
+        const pageNum = pageCount;
+        console.log(`\n  [${pageNum}/${maxPages}] depth=${depth} ${url}`);
+
+        const pageStart = Date.now();
+        let pageResult: CrawlPageResult;
+
+        try {
+          const result = await withRetry(
+            () => runPipeline(url, { ...opts, verbose: true }),
+            retries
+          );
+
+          const newLinks = await discoverLinks(url, seedOrigin, visited, maxDepth, depth);
+          let addedCount = 0;
+          for (const link of newLinks) {
+            if (!visited.has(link) && pageCount + queue.length < maxPages * 3) {
+              visited.add(link);
+              queue.push([link, depth + 1]);
+              addedCount++;
+            }
+          }
+
+          console.log(
+            `      ✓ conf=${result.confidence}% | ${result.fetchMs}ms fetch + ${result.extractMs}ms extract | ${addedCount} new links`
+          );
+
+          pageResult = {
+            url,
+            depth,
+            status: "success",
+            result,
+            durationMs: Date.now() - pageStart,
+          };
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.log(`      ✗ ${msg}`);
+          pageResult = {
+            url,
+            depth,
+            status: "error",
+            error: msg,
+            durationMs: Date.now() - pageStart,
+          };
+        }
+
+        results.push(pageResult);
+        if (delayMs > 0) await sleep(delayMs);
+      })
+    );
   }
-  if (opts.includePattern && !opts.includePattern.test(url)) return false;
-  if (opts.excludePattern && opts.excludePattern.test(url)) return false;
-  if (SKIP_EXT.test(url)) return false;
-  return true;
+
+  const successes = results.filter((r) => r.status === "success");
+  const confidences = successes
+    .map((r) => r.result?.confidence ?? 0)
+    .filter((c) => c > 0);
+  const avgConfidence =
+    confidences.length > 0
+      ? Math.round(confidences.reduce((a, b) => a + b, 0) / confidences.length)
+      : 0;
+
+  return {
+    pages: results,
+    totalSuccess: successes.length,
+    totalErrors: results.length - successes.length,
+    avgConfidence,
+    totalMs: Date.now() - overallStart,
+  };
+}
+
+// ─── Link discovery ───────────────────────────────────────────────────────────
+async function discoverLinks(
+  pageUrl: string,
+  allowedOrigin: string,
+  visited: Set<string>,
+  maxDepth: number,
+  currentDepth: number
+): Promise<string[]> {
+  if (currentDepth >= maxDepth) return [];
+
+  try {
+    const html = await fetchRaw(pageUrl);
+    const links: string[] = [];
+    const hrefRegex = /href=["']([^"'#][^"']*?)["']/gi;
+    let match: RegExpExecArray | null;
+
+    while ((match = hrefRegex.exec(html)) !== null) {
+      const href = match[1];
+      let resolved: string;
+
+      if (href.startsWith("http")) {
+        resolved = href;
+      } else if (href.startsWith("/")) {
+        resolved = allowedOrigin + href;
+      } else {
+        continue;
+      }
+
+      let normalized: string;
+      try {
+        normalized = normalizeUrl(resolved);
+      } catch {
+        continue;
+      }
+
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(normalized);
+      } catch {
+        continue;
+      }
+
+      const pathname = parsedUrl.pathname;
+
+      // Skip assets, noise paths, and query-string URLs
+      const isAsset = /\.(pdf|jpg|jpeg|png|gif|svg|css|js|xml|json|woff|woff2|ttf|ico|map)$/i.test(pathname);
+      const isNoise = [
+        "/tag/", "/author/", "/page/", "/rss", "/feed",
+        "/webmentions/", "/assets/", "/public/", "/ghost/",
+        "/sitemap", "/amp/", "/subscribe", "/signin", "/signup",
+      ].some((seg) => pathname.startsWith(seg) || pathname.includes(seg));
+      const hasQuery = parsedUrl.search.length > 0;
+
+      if (
+        getOrigin(normalized) === allowedOrigin &&
+        !visited.has(normalized) &&
+        !isAsset &&
+        !isNoise &&
+        !hasQuery
+      ) {
+        links.push(normalized);
+      }
+    }
+
+    return [...new Set(links)];
+  } catch {
+    return [];
+  }
+}
+
+// ─── Raw HTTP fetch for link discovery ───────────────────────────────────────
+function fetchRaw(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const mod = url.startsWith("https") ? https : http;
+    const req = mod.get(
+      url,
+      {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+        },
+        timeout: 8000,
+      },
+      (res) => {
+        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          fetchRaw(res.headers.location).then(resolve).catch(reject);
+          return;
+        }
+        const chunks: Buffer[] = [];
+        res.on("data", (chunk: Buffer) => chunks.push(chunk));
+        res.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+        res.on("error", reject);
+      }
+    );
+    req.on("error", reject);
+    req.on("timeout", () => { req.destroy(); reject(new Error("timeout")); });
+  });
+}
+
+function getOrigin(url: string): string | null {
+  try { return new URL(url).origin; } catch { return null; }
+}
+
+function normalizeUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    u.hash = "";
+    u.searchParams.delete("utm_source");
+    u.searchParams.delete("utm_medium");
+    u.searchParams.delete("utm_campaign");
+    let href = u.href;
+    if (href.endsWith("/") && u.pathname !== "/") href = href.slice(0, -1);
+    return href;
+  } catch {
+    return url;
+  }
+}
+
+async function withRetry<T>(fn: () => Promise<T>, retries: number): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i <= retries; i++) {
+    try { return await fn(); } catch (err) {
+      lastErr = err;
+      if (i < retries) await sleep(1000 * (i + 1));
+    }
+  }
+  throw lastErr;
 }
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
-}
-
-// ─── Extract links from already-parsed data.links array ──────────────────────
-
-function extractLinksFromData(data: unknown, baseUrl: string): string[] {
-  const result: string[] = [];
-  const linksArr = (data as any)?.links;
-  if (!Array.isArray(linksArr)) return result;
-
-  for (const l of linksArr) {
-    const href = l?.href ?? l?.url ?? l;
-    if (typeof href !== "string") continue;
-    if (!href || href.startsWith("javascript:") || href.startsWith("mailto:")) continue;
-    try {
-      const abs = new URL(href, baseUrl).href.split("#")[0];
-      if (abs.startsWith("http")) result.push(abs);
-    } catch { /* skip */ }
-  }
-
-  return [...new Set(result)];
-}
-
-// ─── Main Crawler ─────────────────────────────────────────────────────────────
-
-export async function crawlV2(seedUrl: string, opts: CrawlV2Options): Promise<CrawlV2Result> {
-  const {
-    maxDepth = 3,
-    maxPages = 50,
-    delayMs = 500,
-    concurrency = 2,
-    onPage,
-    verbose = true,
-  } = opts;
-
-  const seedDomain = new URL(seedUrl).hostname;
-  const visited = new Set<string>([seedUrl]);
-  const pages: CrawlV2PageResult[] = [];
-  const start = Date.now();
-
-  const queue: Array<[string, number]> = [[seedUrl, 0]];
-
-  const modeLabel = opts.extractionMode ?? "cheerio";
-  console.log(`\n${"─".repeat(60)}`);
-  console.log(`  CRAWLER v2 — ${modeLabel.toUpperCase()} mode`);
-  console.log(`  Seed: ${seedUrl}`);
-  console.log(`  Max depth: ${maxDepth} | Max pages: ${maxPages} | Concurrency: ${concurrency}`);
-  console.log(`${"─".repeat(60)}\n`);
-
-  async function processPage(url: string, depth: number): Promise<CrawlV2PageResult> {
-    const pageStart = Date.now();
-    const pageNum = pages.length + 1;
-    if (verbose) console.log(`\n  [${pageNum}/${maxPages}] depth=${depth} ${url}`);
-
-    try {
-      const result = await runPipeline(url, { ...opts, verbose });
-
-      let linksFound = 0;
-
-      if (depth < maxDepth) {
-        const rawLinks = extractLinksFromData(result.data, result.finalUrl);
-
-        for (const link of rawLinks) {
-          if (
-            !visited.has(link) &&
-            shouldCrawl(link, opts, seedDomain) &&
-            visited.size < maxPages * 3
-          ) {
-            visited.add(link);
-            queue.push([link, depth + 1]);
-            linksFound++;
-          }
-        }
-      }
-
-      const pageResult: CrawlV2PageResult = {
-        url,
-        depth,
-        status: "success",
-        result,
-        linksFound,
-        durationMs: Date.now() - pageStart,
-      };
-
-      if (verbose) {
-        console.log(
-          `      ✓ conf=${(result.confidence * 100).toFixed(0)}% | ${result.fetchMs}ms fetch + ${result.extractMs}ms extract | ${linksFound} new links`
-        );
-      }
-
-      return pageResult;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (verbose) console.error(`      ✗ ${msg}`);
-      return {
-        url,
-        depth,
-        status: "error",
-        error: msg,
-        linksFound: 0,
-        durationMs: Date.now() - pageStart,
-      };
-    }
-  }
-
-  // BFS with concurrency pool
-  while (queue.length > 0 && pages.length < maxPages) {
-    const batch: Array<[string, number]> = [];
-    while (
-      batch.length < concurrency &&
-      queue.length > 0 &&
-      pages.length + batch.length < maxPages
-    ) {
-      const item = queue.shift();
-      if (item) batch.push(item);
-    }
-    if (batch.length === 0) break;
-
-    const batchResults = await Promise.all(
-      batch.map(([url, depth]) => processPage(url, depth))
-    );
-
-    for (const r of batchResults) {
-      pages.push(r);
-      if (onPage) await onPage(r);
-    }
-
-    if (delayMs > 0 && queue.length > 0) await sleep(delayMs);
-  }
-
-  const successPages = pages.filter((p) => p.status === "success");
-  const avgConfidence =
-    successPages.length > 0
-      ? successPages.reduce((sum, p) => sum + (p.result?.confidence ?? 0), 0) /
-        successPages.length
-      : 0;
-
-  console.log(`\n${"─".repeat(60)}`);
-  console.log(`  CRAWL COMPLETE`);
-  console.log(`  Pages: ${pages.length} | Success: ${successPages.length} | Errors: ${pages.length - successPages.length}`);
-  console.log(`  Avg confidence: ${(avgConfidence * 100).toFixed(0)}%`);
-  console.log(`  Time: ${((Date.now() - start) / 1000).toFixed(1)}s`);
-  console.log(`${"─".repeat(60)}\n`);
-
-  return {
-    seedUrl,
-    totalPages: pages.length,
-    successCount: successPages.length,
-    errorCount: pages.length - successPages.length,
-    avgConfidence,
-    durationMs: Date.now() - start,
-    pages,
-  };
 }

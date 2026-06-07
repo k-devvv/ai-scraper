@@ -1,506 +1,256 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 /**
- * cli-v2.ts — Full CLI with crawl exclude fix
+ * cli-v2.ts — Universal Web Scraper CLI
+ *
+ * Commands:
+ *   schemas                          — list all available schemas
+ *   scrape <url> <schema> [options]  — scrape a single URL
+ *   crawl  <url> <schema> [options]  — deep crawl from a seed URL
+ *   sitemap <url> <schema> [options] — scrape all URLs from sitemap
+ *
+ * Options:
+ *   --mode=cheerio|hybrid|ai    extraction mode (default: hybrid)
+ *   --pages=N                   max pages (default: 20)
+ *   --depth=N                   max link depth (default: 2)
+ *   --concurrency=N             parallel workers (default: 2)
+ *   --delay=N                   ms between requests (default: 300)
+ *   --output=json,csv           save formats (default: json)
+ *   --model=qwen2.5:7b          Ollama model for AI/hybrid modes
+ *   --threshold=70              hybrid mode: AI kicks in below this confidence %
  */
 
-import { runPipeline, runBatchPipeline, type ExtractionMode } from "./pipeline";
-import { crawlV2 } from "./crawler-v2";
-import { discoverSitemapUrls } from "./sitemap";
-import {
-  writeSingleResult,
-  writeBatchResults,
-  writeCrawlResults,
-  writeMarkdownDump,
-  type OutputFormat,
-} from "./output";
-import { SCHEMA_MAP, type SchemaKey } from "./schemas";
-import type { FetchMode } from "./fetcher";
+import * as fs from "fs";
+import * as path from "path";
+import { runPipeline } from "./pipeline";
+import { crawl } from "./crawler-v2";
+import { parseSitemap } from "./sitemap";
+import { saveOutput } from "./output";
+import { SCHEMA_RULES, SCHEMA_DESCRIPTIONS } from "./selectors";
+import type { PipelineMode } from "./pipeline";
 
-// ─── Arg Parser ───────────────────────────────────────────────────────────────
+const args = process.argv.slice(2);
+const command = args[0]?.toLowerCase();
 
-interface ParsedArgs {
-  command: string;
-  positional: string[];
-  flags: Record<string, string | boolean>;
+function flag(name: string, defaultVal: string): string {
+  const found = args.find((a) => a.startsWith(`--${name}=`));
+  return found ? found.split("=").slice(1).join("=") : defaultVal;
 }
 
-function parseArgs(argv: string[]): ParsedArgs {
-  const args = argv.slice(2);
-  const positional: string[] = [];
-  const flags: Record<string, string | boolean> = {};
-  for (const arg of args) {
-    if (arg.startsWith("--")) {
-      const [k, v] = arg.slice(2).split("=");
-      flags[k] = v ?? true;
-    } else {
-      positional.push(arg);
-    }
+const outputDir = "output";
+if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
+
+function timestamp(): string {
+  return new Date().toISOString().replace(/[:.]/g, "-").slice(0, -5);
+}
+
+// ─── schemas ──────────────────────────────────────────────────────────────────
+if (!command || command === "schemas") {
+  console.log("\nAvailable schemas (works with --mode=hybrid on ANY site):");
+  for (const [name, desc] of Object.entries(SCHEMA_DESCRIPTIONS)) {
+    console.log(`  ${name.padEnd(14)} ${desc}`);
   }
-  return { command: positional[0] ?? "help", positional: positional.slice(1), flags };
+  console.log("\nTip: Use --mode=hybrid (default) for 80-90% confidence on any site.");
+  console.log("     Use --mode=cheerio for speed on known sites (lower confidence).");
+  console.log("     Use --mode=ai for maximum accuracy (slower, uses Ollama).\n");
+  process.exit(0);
 }
 
-function str(flags: Record<string, string | boolean>, key: string, fallback: string): string {
-  const v = flags[key];
-  return typeof v === "string" ? v : fallback;
-}
+// ─── scrape ───────────────────────────────────────────────────────────────────
+if (command === "scrape") {
+  const url = args[1];
+  const schema = args[2];
 
-function num(flags: Record<string, string | boolean>, key: string, fallback: number): number {
-  return parseInt(str(flags, key, String(fallback)), 10) || fallback;
-}
-
-function formats(flags: Record<string, string | boolean>): OutputFormat[] {
-  return str(flags, "output", "json").split(",").map((f) => f.trim() as OutputFormat);
-}
-
-// ─── Help ─────────────────────────────────────────────────────────────────────
-
-function printHelp(): void {
-  console.log(`
-AI Web Scraper v2 - Cheerio + Intercept + AI
-
-COMMANDS:
-  scrape    <url> [schema]        Single URL
-  batch     <url1,url2> [schema]  Multiple URLs (comma-separated)
-  crawl     <url> [schema]        Deep recursive crawl
-  sitemap   <url> [schema]        Crawl via sitemap.xml
-  intercept <url>                 Steal JSON from page APIs
-  markdown  <url>                 Clean markdown dump
-  compare   <url> [schema]        Compare all modes
-  schemas                         List all schemas
-
-FLAGS:
-  --mode=cheerio|hybrid|ai        Extraction mode (default: cheerio)
-  --fetch=auto|fast|stealth       Fetch mode (default: auto)
-  --output=json,csv,markdown      Save formats (default: json)
-  --out-dir=./output              Output directory
-  --depth=3                       Max crawl depth
-  --pages=50                      Max pages
-  --concurrency=3                 Parallel requests
-  --delay=500                     Ms between requests
-  --include=/blog/                URL path filter
-  --model=qwen2.5:7b              Ollama model
-  --threshold=0.3                 Hybrid AI trigger confidence
-  --proxy=http://...              Proxy URL
-
-EXAMPLES:
-  npx tsx cli-v2.ts scrape https://scrapeme.live/shop/Bulbasaur/ product
-  npx tsx cli-v2.ts crawl https://blog.n8n.io article --pages=20 --output=json,csv
-  npx tsx cli-v2.ts batch https://n8n.io/pricing,https://make.com/en/pricing pricing
-  npx tsx cli-v2.ts intercept https://producthunt.com/topics/ai-agents
-`);
-}
-
-// ─── Commands ─────────────────────────────────────────────────────────────────
-
-async function cmdScrape(
-  positional: string[],
-  flags: Record<string, string | boolean>
-): Promise<void> {
-  const url = positional[0];
-  if (!url) { console.error("Error: URL required"); process.exit(1); }
-
-  const schema = positional[1] ?? "article";
-  const mode = str(flags, "mode", "cheerio") as ExtractionMode;
-  const fetchMode = str(flags, "fetch", "auto") as FetchMode;
-  const model = str(flags, "model", "qwen2.5:7b");
-  const threshold = parseFloat(str(flags, "threshold", "0.3"));
-  const proxy = str(flags, "proxy", "");
-  const outDir = str(flags, "out-dir", "./output");
-  const fmts = formats(flags);
-
-  console.log(`\n${"=".repeat(60)}`);
-  console.log(`  Scraper v2 - Single URL`);
-  console.log(`  URL:    ${url}`);
-  console.log(`  Schema: ${schema} | Mode: ${mode} | Fetch: ${fetchMode}`);
-  console.log(`${"=".repeat(60)}`);
-
-  const result = await runPipeline(url, {
-    schema,
-    extractionMode: mode,
-    fetchMode,
-    model,
-    aiThreshold: threshold,
-    proxy: proxy || undefined,
-    verbose: true,
-  });
-
-  console.log("\n--- EXTRACTED DATA -------------------------------------------");
-  console.log(JSON.stringify(result.data, null, 2));
-  console.log("--------------------------------------------------------------");
-  console.log(`Confidence: ${(result.confidence * 100).toFixed(0)}% | AI fallback: ${result.usedAiFallback}`);
-  console.log(`Fetch: ${result.fetchMs}ms | Extract: ${result.extractMs}ms | Total: ${result.durationMs}ms`);
-
-  if (result.interceptedData && result.interceptedData.length > 0) {
-    console.log(`\n--- INTERCEPTED API DATA (${result.interceptedData.length} responses) ---`);
-    console.log(JSON.stringify(result.interceptedData[0], null, 2));
-  }
-
-  if (fmts.length > 0) {
-    console.log("\n--- SAVING OUTPUT --------------------------------------------");
-    writeSingleResult(
-      {
-        url,
-        schema,
-        model: mode,
-        scrapedAt: new Date().toISOString(),
-        data: result.data,
-        inputTokens: 0,
-        outputTokens: 0,
-      },
-      { dir: outDir, formats: fmts }
-    );
-  }
-}
-
-async function cmdIntercept(
-  positional: string[],
-  flags: Record<string, string | boolean>
-): Promise<void> {
-  const url = positional[0];
-  if (!url) { console.error("Error: URL required"); process.exit(1); }
-
-  const outDir = str(flags, "out-dir", "./output");
-  const fmts = formats(flags);
-
-  console.log(`\n${"=".repeat(60)}`);
-  console.log(`  Network Intercept Mode`);
-  console.log(`  URL: ${url}`);
-  console.log(`  -> Launching stealth browser and tapping API calls...`);
-  console.log(`${"=".repeat(60)}`);
-
-  const result = await runPipeline(url, {
-    schema: "generic",
-    extractionMode: "intercept",
-    fetchMode: "intercept",
-    verbose: true,
-  });
-
-  if (result.interceptedData && result.interceptedData.length > 0) {
-    console.log(`\n--- INTERCEPTED ${result.interceptedData.length} API RESPONSE(S) ---`);
-    result.interceptedData.forEach((d, i) => {
-      console.log(`\n[${i + 1}]`, JSON.stringify(d, null, 2).slice(0, 1000));
-    });
-  } else {
-    console.log("\nNo JSON API calls intercepted. The site may serve data in HTML.");
-    console.log("Try: npx tsx cli-v2.ts scrape <url> --mode=cheerio instead.");
-  }
-
-  if (fmts.length > 0 && result.interceptedData && result.interceptedData.length > 0) {
-    writeSingleResult(
-      {
-        url,
-        schema: "intercept",
-        model: "intercept",
-        scrapedAt: new Date().toISOString(),
-        data: { intercepted: result.interceptedData, page_data: result.data },
-        inputTokens: 0,
-        outputTokens: 0,
-      },
-      { dir: outDir, formats: fmts }
-    );
-  }
-}
-
-async function cmdBatch(
-  positional: string[],
-  flags: Record<string, string | boolean>
-): Promise<void> {
-  const urlsRaw = positional[0];
-  if (!urlsRaw) { console.error("Error: URLs required"); process.exit(1); }
-
-  const urls = urlsRaw.split(",").map((u) => u.trim()).filter(Boolean);
-  const schema = positional[1] ?? "article";
-  const mode = str(flags, "mode", "cheerio") as ExtractionMode;
-  const fetchMode = str(flags, "fetch", "auto") as FetchMode;
-  const concurrency = num(flags, "concurrency", 3);
-  const delay = num(flags, "delay", 500);
-  const outDir = str(flags, "out-dir", "./output");
-  const fmts = formats(flags);
-  const model = str(flags, "model", "qwen2.5:7b");
-
-  console.log(`\n${"=".repeat(60)}`);
-  console.log(`  Scraper v2 - Batch (${urls.length} URLs)`);
-  console.log(`  Schema: ${schema} | Mode: ${mode} | Concurrency: ${concurrency}`);
-  console.log(`${"=".repeat(60)}\n`);
-
-  const results = await runBatchPipeline(urls, {
-    schema,
-    extractionMode: mode,
-    fetchMode,
-    model,
-    concurrency,
-    delayMs: delay,
-    retries: 2,
-    verbose: true,
-  });
-
-  const successes = results.filter((r) => r.status === "success");
-  const errors = results.filter((r) => r.status === "error");
-
-  console.log(`\nDone: ${successes.length}/${urls.length} succeeded`);
-  if (errors.length > 0) {
-    errors.forEach((e) => console.error(`  x ${e.url}: ${e.error}`));
-  }
-
-  if (fmts.length > 0) {
-    console.log("\n--- SAVING OUTPUT --------------------------------------------");
-    writeBatchResults(
-      {
-        schema,
-        model: mode,
-        scrapedAt: new Date().toISOString(),
-        totalUrls: urls.length,
-        successCount: successes.length,
-        errorCount: errors.length,
-        results: results.map((r) => ({
-          url: r.url,
-          status: r.status,
-          data: r.result?.data,
-          error: r.error,
-          inputTokens: 0,
-          outputTokens: 0,
-          durationMs: r.durationMs,
-        })),
-      },
-      { dir: outDir, formats: fmts }
-    );
-  }
-}
-
-async function cmdCrawl(
-  positional: string[],
-  flags: Record<string, string | boolean>
-): Promise<void> {
-  const url = positional[0];
-  if (!url) { console.error("Error: URL required"); process.exit(1); }
-
-  const schema = positional[1] ?? "article";
-  const mode = str(flags, "mode", "cheerio") as ExtractionMode;
-  const fetchMode = str(flags, "fetch", "auto") as FetchMode;
-  const maxDepth = num(flags, "depth", 3);
-  const maxPages = num(flags, "pages", 50);
-  const concurrency = num(flags, "concurrency", 2);
-  const delay = num(flags, "delay", 500);
-  const outDir = str(flags, "out-dir", "./output");
-  const fmts = formats(flags);
-  const model = str(flags, "model", "qwen2.5:7b");
-  const includeRaw = str(flags, "include", "");
-  const includePattern = includeRaw ? new RegExp(includeRaw.replace(/\//g, "\\/")) : undefined;
-
-  // Always exclude tag/author/page listing URLs
-  const excludePattern = /\/(tag|author|page)\//;
-
-  const result = await crawlV2(url, {
-    schema,
-    extractionMode: mode,
-    fetchMode,
-    model,
-    maxDepth,
-    maxPages,
-    concurrency,
-    delayMs: delay,
-    includePattern,
-    excludePattern,
-    verbose: true,
-  });
-
-  if (fmts.length > 0) {
-    console.log("--- SAVING OUTPUT --------------------------------------------");
-    writeCrawlResults(
-      {
-        seedUrl: url,
-        totalPages: result.totalPages,
-        successCount: result.successCount,
-        errorCount: result.errorCount,
-        totalInputTokens: 0,
-        totalOutputTokens: 0,
-        durationMs: result.durationMs,
-        pages: result.pages.map((p) => ({
-          url: p.url,
-          depth: p.depth,
-          status: p.status,
-          data: p.result?.data,
-          error: p.error,
-          markdown: p.result?.markdown,
-          linksFound: p.linksFound,
-          durationMs: p.durationMs,
-        })),
-      },
-      { dir: outDir, formats: fmts }
-    );
-  }
-}
-
-async function cmdSitemap(
-  positional: string[],
-  flags: Record<string, string | boolean>
-): Promise<void> {
-  const url = positional[0];
-  if (!url) { console.error("Error: URL required"); process.exit(1); }
-
-  const schema = positional[1] ?? "article";
-  const mode = str(flags, "mode", "cheerio") as ExtractionMode;
-  const fetchMode = str(flags, "fetch", "auto") as FetchMode;
-  const maxPages = num(flags, "pages", 50);
-  const concurrency = num(flags, "concurrency", 3);
-  const delay = num(flags, "delay", 500);
-  const outDir = str(flags, "out-dir", "./output");
-  const fmts = formats(flags);
-  const model = str(flags, "model", "qwen2.5:7b");
-  const pathPrefix = str(flags, "include", "");
-
-  console.log(`\n${"=".repeat(60)}`);
-  console.log(`  Scraper v2 - Sitemap Mode`);
-  console.log(`  Site: ${url} | Schema: ${schema} | Mode: ${mode}`);
-  console.log(`${"=".repeat(60)}`);
-
-  const sitemapUrls = await discoverSitemapUrls(url, {
-    pathPrefix: pathPrefix || undefined,
-    maxUrls: maxPages,
-  });
-
-  if (sitemapUrls.length === 0) {
-    console.error("No URLs found in sitemap.");
+  if (!url || !schema) {
+    console.error("Usage: npx tsx cli-v2.ts scrape <url> <schema> [--mode=hybrid] [--output=json,csv]");
     process.exit(1);
   }
 
-  console.log(`\nFound ${sitemapUrls.length} URLs from sitemap.\n`);
-  const urlStrings = sitemapUrls.map((u) => u.loc);
+  const mode = flag("mode", "hybrid") as PipelineMode;
+  const outputFormats = flag("output", "json").split(",");
+  const model = flag("model", "qwen2.5:7b");
+  const threshold = parseInt(flag("threshold", "70"), 10);
 
-  const results = await runBatchPipeline(urlStrings, {
-    schema,
-    extractionMode: mode,
-    fetchMode,
-    model,
-    concurrency,
-    delayMs: delay,
-    retries: 2,
-    verbose: true,
-  });
+  console.log("\n" + "═".repeat(60));
+  console.log(`  Scraper v2 — Single URL`);
+  console.log(`  URL:    ${url}`);
+  console.log(`  Schema: ${schema} | Mode: ${mode}`);
+  if (mode === "hybrid") console.log(`  AI threshold: <${threshold}% confidence`);
+  console.log("═".repeat(60) + "\n");
 
-  const successes = results.filter((r) => r.status === "success");
-  console.log(`\nDone: ${successes.length}/${urlStrings.length} succeeded`);
-
-  if (fmts.length > 0) {
-    console.log("\n--- SAVING OUTPUT --------------------------------------------");
-    writeBatchResults(
-      {
-        schema,
-        model: mode,
-        scrapedAt: new Date().toISOString(),
-        totalUrls: urlStrings.length,
-        successCount: successes.length,
-        errorCount: urlStrings.length - successes.length,
-        results: results.map((r) => ({
-          url: r.url,
-          status: r.status,
-          data: r.result?.data,
-          error: r.error,
-          inputTokens: 0,
-          outputTokens: 0,
-          durationMs: r.durationMs,
-        })),
-      },
-      { dir: outDir, formats: fmts }
-    );
-  }
-}
-
-async function cmdMarkdown(
-  positional: string[],
-  flags: Record<string, string | boolean>
-): Promise<void> {
-  const url = positional[0];
-  if (!url) { console.error("Error: URL required"); process.exit(1); }
-
-  const outDir = str(flags, "out-dir", "./output");
-  const fetchMode = str(flags, "fetch", "auto") as FetchMode;
-
-  const result = await runPipeline(url, {
-    schema: "generic",
-    extractionMode: "markdown",
-    fetchMode,
-    verbose: true,
-  });
-
-  console.log("\n--- MARKDOWN -------------------------------------------------");
-  const md = (result.data as any).markdown ?? "";
-  console.log(md.slice(0, 3000) + (md.length > 3000 ? "\n\n[... truncated ...]" : ""));
-
-  writeMarkdownDump([{ url, markdown: md }], { dir: outDir });
-}
-
-async function cmdCompare(
-  positional: string[],
-  flags: Record<string, string | boolean>
-): Promise<void> {
-  const url = positional[0];
-  if (!url) { console.error("Error: URL required"); process.exit(1); }
-  const schema = positional[1] ?? "product";
-
-  console.log(`\n${"=".repeat(60)}`);
-  console.log(`  MODE COMPARISON`);
-  console.log(`  URL: ${url} | Schema: ${schema}`);
-  console.log(`${"=".repeat(60)}\n`);
-
-  const modes: ExtractionMode[] = ["cheerio", "intercept"];
-
-  for (const mode of modes) {
-    console.log(`\n-- ${mode.toUpperCase()} ------------------------------------------`);
+  (async () => {
     try {
-      const result = await runPipeline(url, {
-        schema,
-        extractionMode: mode,
-        fetchMode: mode === "intercept" ? "intercept" : "auto",
-        verbose: false,
-      });
-      console.log(`Confidence: ${(result.confidence * 100).toFixed(0)}% | Time: ${result.durationMs}ms`);
-      console.log(JSON.stringify(result.data, null, 2).slice(0, 800));
+      const result = await runPipeline(url, { schema, mode, model, hybridThreshold: threshold, verbose: true });
+
+      console.log("\n─── EXTRACTED DATA " + "─".repeat(42));
+      console.log(JSON.stringify(result.data, null, 2));
+      console.log("─".repeat(60));
+      console.log(
+        `Confidence: ${result.confidence}% | Method: ${result.method} | ${result.totalMs}ms` +
+        (result.inputTokens > 0 ? ` | Tokens: ${result.inputTokens}in/${result.outputTokens}out` : "")
+      );
+
+      if (outputFormats.length > 0) {
+        console.log("\n--- SAVING OUTPUT " + "-".repeat(42));
+        await saveOutput(
+          [{ url, data: result.data, confidence: result.confidence }],
+          schema, outputFormats,
+          path.join(outputDir, `scrape_${timestamp()}`)
+        );
+      }
     } catch (err) {
-      console.error(`Failed: ${err}`);
+      console.error(`\nFatal error: ${err instanceof Error ? err.message : err}`);
+      if (err instanceof Error && err.stack) console.error(err.stack);
+      process.exit(1);
     }
-  }
+  })();
 }
 
-function cmdSchemas(): void {
-  const descriptions: Record<string, string> = {
-    product:    "E-commerce pages (price, stock, features, images)",
-    article:    "News articles (title, author, date, key points)",
-    job:        "Job listings (title, skills, salary, responsibilities)",
-    saas_ideas: "AI/SaaS idea blogs and directories",
-    blog:       "Blog posts (tools, companies, code examples)",
-    company:    "Company profiles (funding, products, competitors)",
-    pricing:    "SaaS pricing pages (tiers, features, limits)",
-    review:     "Review pages (ratings, pros, cons)",
-  };
+// ─── crawl ────────────────────────────────────────────────────────────────────
+else if (command === "crawl") {
+  const seedUrl = args[1];
+  const schema = args[2];
 
-  console.log(`\nAvailable schemas:\n`);
-  for (const [k, v] of Object.entries(descriptions)) {
-    console.log(`  ${k.padEnd(12)} ${v}`);
+  if (!seedUrl || !schema) {
+    console.error("Usage: npx tsx cli-v2.ts crawl <url> <schema> [--pages=20] [--depth=2] [--mode=hybrid]");
+    process.exit(1);
   }
-  console.log();
+
+  const maxPages    = parseInt(flag("pages", "20"), 10);
+  const maxDepth    = parseInt(flag("depth", "2"), 10);
+  const concurrency = parseInt(flag("concurrency", "2"), 10);
+  const delayMs     = parseInt(flag("delay", "300"), 10);
+  const mode        = flag("mode", "hybrid") as PipelineMode;
+  const outputFormats = flag("output", "json").split(",");
+  const model       = flag("model", "qwen2.5:7b");
+  const threshold   = parseInt(flag("threshold", "70"), 10);
+
+  console.log("\n" + "─".repeat(60));
+  console.log(`  CRAWLER v2 — ${mode.toUpperCase()} mode`);
+  console.log(`  Seed: ${seedUrl}`);
+  console.log(`  Max depth: ${maxDepth} | Max pages: ${maxPages} | Concurrency: ${concurrency}`);
+  if (mode === "hybrid") console.log(`  AI kicks in when Cheerio confidence < ${threshold}%`);
+  console.log("─".repeat(60) + "\n");
+
+  (async () => {
+    try {
+      const summary = await crawl(seedUrl, {
+        schema, mode, model, hybridThreshold: threshold,
+        maxDepth, maxPages, concurrency, delayMs, verbose: true,
+      });
+
+      console.log("\n" + "─".repeat(60));
+      console.log(`  CRAWL COMPLETE`);
+      console.log(`  Pages: ${summary.pages.length} | Success: ${summary.totalSuccess} | Errors: ${summary.totalErrors}`);
+      console.log(`  Avg confidence: ${summary.avgConfidence}%`);
+      console.log(`  Time: ${(summary.totalMs / 1000).toFixed(1)}s`);
+      console.log("─".repeat(60));
+
+      const allData = summary.pages
+        .filter((p) => p.status === "success" && p.result)
+        .map((p) => ({ url: p.url, data: p.result!.data, confidence: p.result!.confidence }));
+
+      if (allData.length === 0) {
+        console.log("\n⚠ No successful pages to save.");
+        return;
+      }
+
+      console.log(`\n─── SAMPLE (first result) ${"─".repeat(34)}`);
+      console.log(JSON.stringify(allData[0].data, null, 2));
+      console.log("─".repeat(60));
+
+      console.log("\n--- SAVING OUTPUT " + "-".repeat(42));
+      await saveOutput(allData, schema, outputFormats, path.join(outputDir, `crawl_${timestamp()}`));
+
+    } catch (err) {
+      console.error(`\nFatal error: ${err instanceof Error ? err.message : err}`);
+      if (err instanceof Error && err.stack) console.error(err.stack);
+      process.exit(1);
+    }
+  })();
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── sitemap ──────────────────────────────────────────────────────────────────
+else if (command === "sitemap") {
+  const siteUrl = args[1];
+  const schema = args[2];
 
-async function main(): Promise<void> {
-  const { command, positional, flags } = parseArgs(process.argv);
-
-  switch (command) {
-    case "scrape":    await cmdScrape(positional, flags); break;
-    case "intercept": await cmdIntercept(positional, flags); break;
-    case "batch":     await cmdBatch(positional, flags); break;
-    case "crawl":     await cmdCrawl(positional, flags); break;
-    case "sitemap":   await cmdSitemap(positional, flags); break;
-    case "markdown":  await cmdMarkdown(positional, flags); break;
-    case "compare":   await cmdCompare(positional, flags); break;
-    case "schemas":   cmdSchemas(); break;
-    case "help":
-    default:          printHelp();
+  if (!siteUrl || !schema) {
+    console.error("Usage: npx tsx cli-v2.ts sitemap <url> <schema> [--pages=50] [--include=/blog/]");
+    process.exit(1);
   }
+
+  const maxPages    = parseInt(flag("pages", "50"), 10);
+  const include     = flag("include", "");
+  const mode        = flag("mode", "hybrid") as PipelineMode;
+  const outputFormats = flag("output", "json").split(",");
+  const concurrency = parseInt(flag("concurrency", "3"), 10);
+  const delayMs     = parseInt(flag("delay", "300"), 10);
+  const model       = flag("model", "qwen2.5:7b");
+  const threshold   = parseInt(flag("threshold", "70"), 10);
+
+  console.log("\n" + "─".repeat(60));
+  console.log(`  SITEMAP SCRAPER v2 — ${mode.toUpperCase()} mode`);
+  console.log(`  Site: ${siteUrl}`);
+  console.log(`  Max pages: ${maxPages} | Filter: ${include || "none"} | Concurrency: ${concurrency}`);
+  console.log("─".repeat(60) + "\n");
+
+  (async () => {
+    try {
+      console.log("[1/3] Discovering URLs from sitemap...");
+      let urls = await parseSitemap(siteUrl);
+      console.log(`      → Found ${urls.length} URLs`);
+
+      if (include) {
+        urls = urls.filter((u) => u.includes(include));
+        console.log(`      → After filter (${include}): ${urls.length} URLs`);
+      }
+
+      urls = urls.slice(0, maxPages);
+      console.log(`      → Scraping ${urls.length} URLs\n`);
+
+      const allData: Array<{ url: string; data: Record<string, unknown>; confidence: number }> = [];
+      let success = 0, errors = 0;
+
+      for (let i = 0; i < urls.length; i += concurrency) {
+        const batch = urls.slice(i, i + concurrency);
+        await Promise.all(batch.map(async (url) => {
+          const num = i + batch.indexOf(url) + 1;
+          process.stdout.write(`  [${num}/${urls.length}] ${url.slice(0, 80)}...`);
+          try {
+            const result = await runPipeline(url, { schema, mode, model, hybridThreshold: threshold });
+            console.log(` ✓ ${result.confidence}% (${result.method})`);
+            allData.push({ url, data: result.data, confidence: result.confidence });
+            success++;
+          } catch (err) {
+            console.log(` ✗ ${err instanceof Error ? err.message : err}`);
+            errors++;
+          }
+          if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
+        }));
+      }
+
+      console.log(`\n  Done: ${success} success | ${errors} errors`);
+
+      if (allData.length > 0) {
+        console.log(`\n─── SAMPLE ${"─".repeat(49)}`);
+        console.log(JSON.stringify(allData[0].data, null, 2));
+        console.log("\n--- SAVING OUTPUT " + "-".repeat(42));
+        await saveOutput(allData, schema, outputFormats, path.join(outputDir, `sitemap_${timestamp()}`));
+      }
+    } catch (err) {
+      console.error(`\nFatal error: ${err instanceof Error ? err.message : err}`);
+      process.exit(1);
+    }
+  })();
 }
 
-main().catch((err) => {
-  console.error("\nFatal error:", err.message ?? err);
+// ─── unknown ──────────────────────────────────────────────────────────────────
+else {
+  console.error(`Unknown command: "${command}"`);
+  console.log("\nCommands: schemas, scrape, crawl, sitemap");
+  console.log("\nQuick start:");
+  console.log("  npx tsx cli-v2.ts scrape https://blog.n8n.io/ai-hallucinations/ saas_ideas");
+  console.log("  npx tsx cli-v2.ts crawl https://blog.n8n.io saas_ideas --pages=20 --mode=hybrid");
+  console.log("  npx tsx cli-v2.ts sitemap https://n8n.io saas_ideas --include=/blog/ --pages=50");
   process.exit(1);
-});
+}
