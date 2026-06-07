@@ -1,4 +1,3 @@
-"node_modules/\noutput/\n.env" 
-"node_modules/" 
-"output/" 
-".env" 
+node_modules/ 
+output/ 
+.env 
