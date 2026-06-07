@@ -1,0 +1,157 @@
+{
+  "url": "https://blog.cloudflare.com/ai-gateway-spend-limits/",
+  "schema": "article",
+  "model": "cheerio",
+  "scrapedAt": "2026-06-07T11:30:42.950Z",
+  "data": {
+    "title": "Your AI bill is out of control. Cloudflare can fix it now.",
+    "summary": "AI Gateway now features real-time spend limits to prevent runaway token bills across multiple AI providers. By integrating with Cloudflare Access, companies can use identity-driven budgets and policies.",
+    "key_points": [
+      "VoidZero is joining Cloudflare",
+      "How we built Cloudflare's data platform and an AI agent on top of it",
+      "Announcing Claude Compliance API support with Cloudflare CASB",
+      "Announcing Claude Managed Agents on Cloudflare"
+    ],
+    "headings": [
+      "Your AI bill is out of control. Cloudflare can fix it now.",
+      "What AI Gateway is",
+      "Spend limits: budgets for AI usage",
+      "We use this ourselves",
+      "Identity-driven budgets and policies (closed beta)",
+      "What's next: from cost control to cost optimization",
+      "Get started",
+      "VoidZero is joining Cloudflare",
+      "How we built Cloudflare's data platform and an AI agent on top of it",
+      "Announcing Claude Compliance API support with Cloudflare CASB",
+      "Announcing Claude Managed Agents on Cloudflare"
+    ],
+    "paragraphs": [
+      "There isn't a CIO on the planet not worried about AI spend right now. CFOs are increasingly nervous, too.",
+      "For fear of falling behind, many companies have pushed their employees to use AI as aggressively as possible. The edict was clear: \"Move fast, we'll figure out the bill later.\" And for the most part, it worked: AI has been genuinely transformational for the teams that leaned in.",
+      "But the costs are real: we’ve heard countless horror stories of huge bills and painful overages on token spend.",
+      "Today, we're announcing spend controls in Cloudflare AI Gateway, and a closed beta for identity-driven budgets and routing using Cloudflare Access and your existing identity provider.",
+      "As we’ve spoken with hundreds of companies about their AI strategy, we’ve seen a common story:  The company gives every engineer access to frontier models through a shared API key. Usage takes off. At the end of the month, finance pulls the invoice and nobody can explain where the money went. Was it the machine learning team training a new pipeline? Was it an intern running Claude Opus on email triage? Was it a runaway continuous integration job that burned through 50 million tokens in a weekend? Nobody knows, because the API key doesn't tell you who used it.",
+      "Without guidelines, staff will generally reach for the biggest model available. And why wouldn't they? If there's no budget, no visibility, and no routing logic, the rational move is to use the most powerful model for everything. The problem is that most tasks don't need a frontier model. A code review summary doesn't need the same model as a complex architecture refactor. A log parser doesn't need the same model as a customer-facing content generator. It should be easy to select the right tool for the job, rather than defaulting to the most powerful and expensive one. And it should be simple to see where the spend is going.",
+      "You can't calculate ROI on your AI spend without visibility on what you're spending, and you can't protect that ROI without controls. Every other line item in a business has a budget and per-team attribution and AI spend should be no different.",
+      "AI Gateway sits between your applications and AI providers. Instead of calling OpenAI, Anthropic, Google, or any other provider directly, your requests route through AI Gateway first.",
+      "This immediately gives you several useful tools:",
+      "Unified billing to easily switch between different providers and models"
+    ],
+    "lists": [
+      [
+        "Ming Lu",
+        "Kenny Johnson"
+      ],
+      [
+        "Unified billing to easily switch between different providers and models",
+        "Logging across all providers — every request, token count, and cost in one place",
+        "Response caching",
+        "Rate limiting",
+        "Content guardrails and the ability to block Personally Identifiable Information (PII) and secrets before they reach the model"
+      ],
+      [
+        "Evan You,",
+        "Steve Faulkner"
+      ],
+      [
+        "Brian Brunner,",
+        "Dmitry Alexeenko,",
+        "Matt Moen"
+      ],
+      [
+        "Abe Carryl"
+      ],
+      [
+        "Mike Nomitch"
+      ]
+    ],
+    "links": [
+      {
+        "text": "Ming Lu",
+        "href": "/author/ming-lu/"
+      },
+      {
+        "text": "Kenny Johnson",
+        "href": "/author/kenny/"
+      },
+      {
+        "text": "AI Gateway",
+        "href": "https://developers.cloudflare.com/ai-gateway/"
+      },
+      {
+        "text": "Content guardrails",
+        "href": "https://developers.cloudflare.com/ai-gateway/features/guardrails/"
+      },
+      {
+        "text": "block Personally Identifiable Information (PII) and secrets",
+        "href": "https://developers.cloudflare.com/ai-gateway/features/dlp/"
+      },
+      {
+        "text": "spend limits",
+        "href": "https://developers.cloudflare.com/ai-gateway/features/spend-limits"
+      },
+      {
+        "text": "Dynamic Routes",
+        "href": "https://developers.cloudflare.com/ai-gateway/features/dynamic-routing/"
+      },
+      {
+        "text": "Cloudflare Access",
+        "href": "https://developers.cloudflare.com/cloudflare-one/"
+      },
+      {
+        "text": "CI/CD",
+        "href": "https://www.cloudflare.com/learning/serverless/glossary/what-is-ci-cd/"
+      },
+      {
+        "text": "Access service tokens",
+        "href": "https://developers.cloudflare.com/cloudflare-one/access-controls/service-credentials/service-tokens/"
+      },
+      {
+        "text": "how we built our internal AI engineering stack",
+        "href": "https://blog.cloudflare.com/internal-ai-engineering-stack/"
+      },
+      {
+        "text": "sign up here",
+        "href": "https://www.cloudflare.com/lp/ai-gateway-identity-aware-endpoints-beta/"
+      },
+      {
+        "text": "developer docs",
+        "href": "https://developers.cloudflare.com/ai-gateway/"
+      },
+      {
+        "text": "changelog",
+        "href": "https://developers.cloudflare.com/ai-gateway/changelog/"
+      },
+      {
+        "text": "create a gateway",
+        "href": "https://developers.cloudflare.com/ai-gateway/get-started/"
+      },
+      {
+        "text": "sign up",
+        "href": "https://www.cloudflare.com/lp/ai-gateway-identity-aware-endpoints-beta/"
+      },
+      {
+        "text": "Cloudflare Community",
+        "href": "https://community.cloudflare.com/"
+      },
+      {
+        "text": "reach out",
+        "href": "https://www.cloudflare.com/ai-security/"
+      },
+      {
+        "text": "Discuss on Hacker News",
+        "href": "https://news.ycombinator.com/submitlink?u=https://blog.cloudflare.com//ai-gateway-spend-limits/"
+      },
+      {
+        "text": "AI Gateway",
+        "href": "/tag/ai-gateway/"
+      }
+    ],
+    "description": "AI Gateway now features real-time spend limits to prevent runaway token bills across multiple AI providers. By integrating with Cloudflare Access, companies can use identity-driven budgets and policies.",
+    "images": [
+      "https://cf-assets.www.cloudflare.com/zkvhlag99gkb/10aPjUkoN4qtMrhmFvJXjU/39e514a0d40f1059d73c342e15c4ab5a/Your_AI_bill_is_out_of_control._Cloudflare_can_fix_it_now._-OG.png"
+    ]
+  },
+  "inputTokens": 0,
+  "outputTokens": 0
+}

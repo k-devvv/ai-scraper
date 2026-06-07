@@ -115,29 +115,38 @@ export const articleSelectors: SelectorSchema = {
   },
   author: {
     selectors: [
-      // Cloudflare blog
-      ".author-name", "[data-testid='author-name']", ".byline a",
-      // Generic
-      "[itemprop='author']", "[rel='author']", ".post-author",
-      ".entry-author", "span.author", ".byline",
+      "a[href*='/author/']",
+      ".author-name",
+      "[data-testid='author-name']",
+      ".byline a",
+      "[itemprop='author']",
+      "[rel='author']",
+      ".post-author",
+      ".entry-author",
+      "span.author",
+      ".byline",
     ],
     extract: "text",
+    multiple: true,
   },
   published_date: {
     selectors: [
-      // Cloudflare blog
-      "time[datetime]", ".post-date", "[data-testid='publish-date']",
-      // Generic
-      "[itemprop='datePublished']", "meta[property='article:published_time']",
-      ".entry-date", ".published",
+      "time",
+      "time[datetime]",
+      ".post-date",
+      "[data-testid='publish-date']",
+      "[itemprop='datePublished']",
+      ".entry-date",
+      ".published",
     ],
-    extract: "attr",
-    attr: "datetime",
+    extract: "text",
   },
   summary: {
     selectors: [
-      "[itemprop='description']", "meta[name='description']",
-      ".post-excerpt", ".entry-summary",
+      "[itemprop='description']",
+      "meta[name='description']",
+      ".post-excerpt",
+      ".entry-summary",
     ],
     extract: "attr",
     attr: "content",
