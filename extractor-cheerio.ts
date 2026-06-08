@@ -2,14 +2,11 @@
  * extractor-cheerio.ts
  * Cheerio-based extraction engine — zero AI, ~1ms per page.
  *
- * Extraction order (each layer fills missing fields):
+ * Extraction order:
  *  1. CSS selectors (from selectors.ts registry)
- *  2. JSON-LD structured data (Product, Article, JobPosting, etc.)
- *  3. OpenGraph / Twitter card meta tags
- *  4. Heuristic fallbacks (tables, headings, first paragraph)
- *
- * structured_data is NEVER written to the output — it's used internally
- * to promote fields, then discarded.
+ *  2. JSON-LD structured data promotion
+ *  3. OpenGraph / meta tag fallbacks
+ *  4. Smart heuristics per schema
  */
 
 import * as cheerio from "cheerio";
@@ -18,18 +15,14 @@ import type { SchemaRules } from "./selectors";
 
 export interface CheerioResult {
   data: Record<string, unknown>;
-  confidence: number;   // 0–100: how many schema fields were found
+  confidence: number;
   found: string[];
   missing: string[];
   method: "cheerio";
   durationMs: number;
 }
 
-// ─── Main entry point ─────────────────────────────────────────────────────────
-export function extractWithCheerio(
-  html: string,
-  schemaName: string
-): CheerioResult {
+export function extractWithCheerio(html: string, schemaName: string): CheerioResult {
   const start = Date.now();
   const rules = SCHEMA_RULES[schemaName];
   if (!rules) throw new Error(`Unknown schema: "${schemaName}"`);
@@ -37,260 +30,148 @@ export function extractWithCheerio(
   const $ = cheerio.load(html);
   const data: Record<string, unknown> = {};
 
-  // Stage 1: CSS selector extraction
   applyCssRules($, rules, data);
-
-  // Stage 2: JSON-LD promotion (internal — never written to data as-is)
-  const jsonLd = extractJsonLd($);
-  promoteFromJsonLd(jsonLd, schemaName, data);
-
-  // Stage 3: OpenGraph / meta tag fallbacks
+  promoteFromJsonLd($, schemaName, data);
   applyMetaFallbacks($, schemaName, data);
-
-  // Stage 4: Heuristic fallbacks for still-missing fields
   applyHeuristics($, schemaName, data);
 
   // Clean empty values
   for (const key of Object.keys(data)) {
     const val = data[key];
-    if (
-      val === "" ||
-      val === null ||
-      val === undefined ||
-      (Array.isArray(val) && val.length === 0)
-    ) {
+    if (val === "" || val === null || val === undefined || (Array.isArray(val) && val.length === 0)) {
       delete data[key];
     }
   }
 
-  // Confidence = fields found / total schema fields
   const schemaFields = Object.keys(rules);
   const found = schemaFields.filter((f) => data[f] !== undefined);
   const missing = schemaFields.filter((f) => data[f] === undefined);
   const confidence = Math.round((found.length / schemaFields.length) * 100);
 
-  return {
-    data,
-    confidence,
-    found,
-    missing,
-    method: "cheerio",
-    durationMs: Date.now() - start,
-  };
+  return { data, confidence, found, missing, method: "cheerio", durationMs: Date.now() - start };
 }
 
 // ─── Stage 1: CSS rules ───────────────────────────────────────────────────────
-function applyCssRules(
-  $: cheerio.CheerioAPI,
-  rules: SchemaRules,
-  data: Record<string, unknown>
-): void {
+function applyCssRules($: cheerio.CheerioAPI, rules: SchemaRules, data: Record<string, unknown>): void {
   for (const [field, rule] of Object.entries(rules)) {
     for (const sel of rule.selectors) {
       const el = $(sel).first();
       if (!el.length) continue;
-
       let value: unknown;
 
       switch (rule.type) {
         case "text": {
-          const text = el.text().trim();
-          if (text) { value = text; }
+          const t = el.text().trim();
+          if (t) value = t;
           break;
         }
-
         case "attr": {
-          const attr = el.attr(rule.attr)?.trim();
-          if (attr) { value = attr; }
+          const a = el.attr(rule.attr)?.trim();
+          if (a) value = a;
           break;
         }
-
         case "number": {
           const raw = el.attr("content") || el.text();
-          const num = parseFloat(raw.replace(/[^0-9.]/g, ""));
-          if (!isNaN(num)) { value = num; }
+          const n = parseFloat(raw.replace(/[^0-9.]/g, ""));
+          if (!isNaN(n)) value = n;
           break;
         }
-
         case "bool": {
-          // Check for class-based availability (e.g. .instock element existing = in stock)
           const text = el.text().toLowerCase().trim();
-          const className = el.attr("class")?.toLowerCase() || "";
+          const cls = el.attr("class")?.toLowerCase() ?? "";
           const trueVals = rule.trueValues ?? ["in stock", "available"];
-
-          if (className.includes("instock") || trueVals.some((v) => text.includes(v))) {
-            value = true;
-          } else if (text.includes("out of stock") || text.includes("unavailable")) {
-            value = false;
-          } else if (el.length) {
-            // Element exists — assume in stock (e.g. cart button present)
-            value = true;
-          }
+          if (cls.includes("instock") || trueVals.some((v) => text.includes(v))) value = true;
+          else if (text.includes("out of stock") || text.includes("unavailable")) value = false;
+          else if (el.length) value = true;
           break;
         }
-
         case "rating": {
-          // Try numeric content/text first
           const numStr = el.attr("content") || el.text();
-          const num = parseFloat(numStr.replace(/[^0-9.]/g, ""));
-          if (!isNaN(num) && num > 0) {
-            value = num;
-            break;
-          }
-          // Fall back to word-class encoding (e.g. "star-rating Three" → 3)
-          const cls = el.attr("class") || "";
+          const n = parseFloat(numStr.replace(/[^0-9.]/g, ""));
+          if (!isNaN(n) && n > 0) { value = n; break; }
+          const cls = el.attr("class") ?? "";
           for (const [word, rating] of Object.entries(WORD_RATINGS)) {
-            if (cls.includes(word)) {
-              value = rating;
-              break;
-            }
+            if (cls.includes(word)) { value = rating; break; }
           }
           break;
         }
-
         case "list": {
-          // Collect all matching elements — filter noise
           const items: string[] = [];
           $(sel).each((_, elem) => {
-            const text = $(elem).text().trim().replace(/\s+/g, " ");
-            // Skip: empty, too short (nav items), too long (paragraphs), duplicates
-            if (
-              text &&
-              text.length >= 8 &&
-              text.length <= 300 &&
-              !items.includes(text)
-            ) {
-              items.push(text);
-            }
+            const t = $(elem).text().trim().replace(/\s+/g, " ");
+            if (t && t.length >= 8 && t.length <= 300 && !items.includes(t)) items.push(t);
           });
-          if (items.length > 0) {
-            value = rule.limit ? items.slice(0, rule.limit) : items;
-          }
+          if (items.length > 0) value = rule.limit ? items.slice(0, rule.limit) : items;
           break;
         }
-
         case "table": {
-          // Parse key-value table rows into a clean object
           const tableData: Record<string, string> = {};
           const tableEl = $(sel);
-
-          // Handle both <table> and <tr> selectors
           const rows = tableEl.is("tr") ? tableEl : tableEl.find("tr");
-
           rows.each((_, row) => {
             const cells = $(row).find("td, th");
             if (cells.length >= 2) {
-              const key = $(cells[0]).text().trim().replace(/\s+/g, " ");
-              const val = $(cells[1]).text().trim().replace(/\s+/g, " ");
-              if (key && val) {
-                tableData[key] = val;
-              }
+              const k = $(cells[0]).text().trim().replace(/\s+/g, " ");
+              const v = $(cells[1]).text().trim().replace(/\s+/g, " ");
+              if (k && v) tableData[k] = v;
             }
           });
-
-          // Also handle <li> selectors for bullet-point features
           if (Object.keys(tableData).length === 0) {
             const items: string[] = [];
             $(sel).each((_, elem) => {
-              const text = $(elem).text().trim();
-              if (text) items.push(text);
+              const t = $(elem).text().trim();
+              if (t) items.push(t);
             });
-            if (items.length > 0) {
-              value = rule.limit ? items.slice(0, rule.limit) : items;
-              break;
-            }
+            if (items.length > 0) { value = rule.limit ? items.slice(0, rule.limit) : items; break; }
           }
-
-          if (Object.keys(tableData).length > 0) {
-            value = tableData;
-          }
+          if (Object.keys(tableData).length > 0) value = tableData;
           break;
         }
       }
 
-      if (value !== undefined) {
-        data[field] = value;
-        break; // First selector that returns a value wins
-      }
+      if (value !== undefined) { data[field] = value; break; }
     }
   }
 }
 
-// ─── Stage 2: JSON-LD extraction ──────────────────────────────────────────────
-function extractJsonLd($: cheerio.CheerioAPI): Record<string, unknown>[] {
-  const results: Record<string, unknown>[] = [];
-
+// ─── Stage 2: JSON-LD promotion ───────────────────────────────────────────────
+function promoteFromJsonLd($: cheerio.CheerioAPI, schemaName: string, data: Record<string, unknown>): void {
+  const blocks: Record<string, unknown>[] = [];
   $('script[type="application/ld+json"]').each((_, el) => {
     try {
-      const raw = $(el).html()?.trim() || "";
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        results.push(...parsed);
-      } else {
-        results.push(parsed as Record<string, unknown>);
-      }
-    } catch {
-      // Ignore malformed JSON-LD
-    }
+      const parsed = JSON.parse($(el).html()?.trim() ?? "{}");
+      if (Array.isArray(parsed)) blocks.push(...parsed);
+      else blocks.push(parsed as Record<string, unknown>);
+    } catch { /* malformed JSON-LD */ }
   });
 
-  return results;
-}
+  for (const block of blocks) {
+    const type = (block["@type"] as string)?.toLowerCase() ?? "";
 
-// ─── Stage 2: Promote JSON-LD fields into data (no raw dump) ─────────────────
-function promoteFromJsonLd(
-  jsonLd: Record<string, unknown>[],
-  schemaName: string,
-  data: Record<string, unknown>
-): void {
-  for (const block of jsonLd) {
-    const type = (block["@type"] as string)?.toLowerCase() || "";
-
-    if (schemaName === "product" && (type === "product" || type.includes("product"))) {
-      // Price from offers
+    if (schemaName === "product" && type.includes("product")) {
       if (!data.price) {
         const offers = block["offers"] as Record<string, unknown> | undefined;
         if (offers) {
-          const price = parseFloat(String(offers["price"] ?? ""));
-          if (!isNaN(price)) data.price = price;
-
-          if (!data.currency) {
-            const cur = offers["priceCurrency"] as string | undefined;
-            if (cur) data.currency = cur;
-          }
-
+          const p = parseFloat(String(offers["price"] ?? ""));
+          if (!isNaN(p)) data.price = p;
+          if (!data.currency) { const c = offers["priceCurrency"] as string; if (c) data.currency = c; }
           if (!data.in_stock) {
             const avail = String(offers["availability"] ?? "").toLowerCase();
-            if (avail.includes("instock") || avail.includes("in_stock")) {
-              data.in_stock = true;
-            } else if (avail.includes("outofstock")) {
-              data.in_stock = false;
-            }
+            if (avail.includes("instock")) data.in_stock = true;
+            else if (avail.includes("outofstock")) data.in_stock = false;
           }
         }
       }
-
       if (!data.sku && block["sku"]) data.sku = block["sku"];
-      if (!data.brand) {
-        const brand = block["brand"] as Record<string, unknown> | undefined;
-        if (brand?.["name"]) data.brand = brand["name"];
-      }
-      if (!data.description && block["description"]) {
-        data.description = block["description"];
-      }
-
-      // Rating
+      if (!data.brand) { const b = block["brand"] as Record<string, unknown>; if (b?.["name"]) data.brand = b["name"]; }
+      if (!data.description && block["description"]) data.description = block["description"];
       if (!data.rating) {
-        const agg = block["aggregateRating"] as Record<string, unknown> | undefined;
+        const agg = block["aggregateRating"] as Record<string, unknown>;
         if (agg) {
-          const r = parseFloat(String(agg["ratingValue"] ?? ""));
-          if (!isNaN(r)) data.rating = r;
-          const rc = parseInt(String(agg["reviewCount"] ?? ""), 10);
-          if (!isNaN(rc)) data.review_count = rc;
+          const r = parseFloat(String(agg["ratingValue"] ?? "")); if (!isNaN(r)) data.rating = r;
+          const rc = parseInt(String(agg["reviewCount"] ?? ""), 10); if (!isNaN(rc)) data.review_count = rc;
         }
       }
-
-      // Images
       if (!data.images) {
         const img = block["image"];
         if (typeof img === "string") data.images = [img];
@@ -298,167 +179,152 @@ function promoteFromJsonLd(
       }
     }
 
-    if (schemaName === "article" && (type === "article" || type.includes("article") || type === "newsarticle" || type === "blogposting")) {
+    if ((schemaName === "article" || schemaName === "blog") &&
+        (type === "article" || type === "newsarticle" || type === "blogposting")) {
       if (!data.title && block["headline"]) data.title = block["headline"];
-      if (!data.author) {
-        const a = block["author"] as Record<string, unknown> | undefined;
-        if (a?.["name"]) data.author = a["name"];
-      }
-      if (!data.published_date && block["datePublished"]) {
-        data.published_date = block["datePublished"];
-      }
+      if (!data.author) { const a = block["author"] as Record<string, unknown>; if (a?.["name"]) data.author = a["name"]; }
+      if (!data.published_date && block["datePublished"]) data.published_date = block["datePublished"];
       if (!data.summary && block["description"]) data.summary = block["description"];
-    }
-
-    if (schemaName === "job" && type === "jobposting") {
-      if (!data.title && block["title"]) data.title = block["title"];
-      if (!data.company) {
-        const org = block["hiringOrganization"] as Record<string, unknown> | undefined;
-        if (org?.["name"]) data.company = org["name"];
-      }
-      if (!data.location) {
-        const loc = block["jobLocation"] as Record<string, unknown> | undefined;
-        const address = loc?.["address"] as Record<string, unknown> | undefined;
-        if (address?.["addressLocality"]) data.location = address["addressLocality"];
-      }
-      if (!data.description && block["description"]) data.description = block["description"];
     }
   }
 }
 
-// ─── Stage 3: Meta tag fallbacks ──────────────────────────────────────────────
-function applyMetaFallbacks(
-  $: cheerio.CheerioAPI,
-  schemaName: string,
-  data: Record<string, unknown>
-): void {
-  const og = (prop: string) =>
-    $(`meta[property="og:${prop}"]`).attr("content")?.trim() ||
-    $(`meta[name="${prop}"]`).attr("content")?.trim();
-
-  const meta = (name: string) =>
-    $(`meta[name="${name}"]`).attr("content")?.trim();
+// ─── Stage 3: Meta fallbacks ──────────────────────────────────────────────────
+function applyMetaFallbacks($: cheerio.CheerioAPI, schemaName: string, data: Record<string, unknown>): void {
+  const og = (p: string) => $(`meta[property="og:${p}"]`).attr("content")?.trim();
+  const meta = (n: string) => $(`meta[name="${n}"]`).attr("content")?.trim();
 
   if (schemaName === "product") {
     if (!data.product_name) data.product_name = og("title") || meta("title");
     if (!data.description) data.description = og("description") || meta("description");
-    if (!data.images) {
-      const img = og("image");
-      if (img) data.images = [img];
-    }
-    if (!data.price) {
-      const priceStr = $("meta[property='product:price:amount']").attr("content");
-      if (priceStr) {
-        const num = parseFloat(priceStr);
-        if (!isNaN(num)) data.price = num;
-      }
-    }
-    if (!data.currency) {
-      const cur = $("meta[property='product:price:currency']").attr("content");
-      if (cur) data.currency = cur;
-    }
+    if (!data.images) { const img = og("image"); if (img) data.images = [img]; }
+    if (!data.price) { const p = $("meta[property='product:price:amount']").attr("content"); if (p) { const n = parseFloat(p); if (!isNaN(n)) data.price = n; } }
+    if (!data.currency) { const c = $("meta[property='product:price:currency']").attr("content"); if (c) data.currency = c; }
   }
 
-  if (schemaName === "article" || schemaName === "blog") {
-    if (!data.title) data.title = og("title") || meta("title");
+  if (schemaName === "article" || schemaName === "blog" || schemaName === "saas_ideas") {
+    if (!data.title && !data.page_title) {
+      const t = og("title") || meta("title");
+      if (t) { schemaName === "saas_ideas" ? (data.page_title = t) : (data.title = t); }
+    }
     if (!data.summary) data.summary = og("description") || meta("description");
     if (!data.author) data.author = meta("author");
-  }
-
-  if (schemaName === "company") {
-    if (!data.name) data.name = og("site_name");
-    if (!data.description) data.description = og("description") || meta("description");
+    if (!data.published_date) {
+      const d = $("meta[property='article:published_time']").attr("content") || meta("date");
+      if (d) data.published_date = d;
+    }
   }
 }
 
-// ─── Stage 4: Heuristic fallbacks ────────────────────────────────────────────
-function applyHeuristics(
-  $: cheerio.CheerioAPI,
-  schemaName: string,
-  data: Record<string, unknown>
-): void {
+// ─── Stage 4: Smart heuristics ────────────────────────────────────────────────
+
+// Generic phrases that are NOT ideas — nav items, CTAs, marketing copy
+const IDEA_BLOCKLIST = new Set([
+  "recent posts", "make something people want", "sign in", "sign up", "log in",
+  "get started", "learn more", "read more", "view all", "see all", "subscribe",
+  "newsletter", "follow us", "share this", "related posts", "you might also like",
+  "tags", "categories", "search", "menu", "navigation", "footer", "header",
+  "cookie", "privacy policy", "terms of service", "copyright", "all rights reserved",
+  "back to top", "load more", "show more", "previous", "next", "page",
+]);
+
+function isGoodIdea(text: string): boolean {
+  const t = text.trim();
+  if (t.length < 15) return false;        // Too short — nav items
+  if (t.length > 200) return false;       // Too long — paragraphs
+  if (t.split(" ").length < 3) return false; // Less than 3 words — probably a label
+  if (IDEA_BLOCKLIST.has(t.toLowerCase())) return false;
+  if (/^(home|blog|about|contact|product|service|pricing|company)$/i.test(t)) return false;
+  if (/^\d+$/.test(t)) return false; // Pure numbers
+  return true;
+}
+
+function applyHeuristics($: cheerio.CheerioAPI, schemaName: string, data: Record<string, unknown>): void {
   if (schemaName === "product") {
-    // Fallback: first <h1> for product name
-    if (!data.product_name) {
-      data.product_name = $("h1").first().text().trim() || undefined;
-    }
-    // Fallback: first real paragraph for description
+    if (!data.product_name) data.product_name = $("h1").first().text().trim() || undefined;
     if (!data.description) {
       $("p").each((_, el) => {
-        const text = $(el).text().trim();
-        if (text.length > 40 && !data.description) {
-          data.description = text;
-        }
+        const t = $(el).text().trim();
+        if (t.length > 40 && !data.description) data.description = t;
       });
     }
   }
 
   if (schemaName === "article" || schemaName === "blog") {
-    if (!data.title) {
-      data.title = $("h1").first().text().trim() || $("title").text().trim() || undefined;
-    }
+    if (!data.title) data.title = $("h1").first().text().trim() || $("title").text().trim() || undefined;
     if (!data.key_points || (data.key_points as unknown[]).length === 0) {
       const headings: string[] = [];
-      $("h2, h3").each((_, el) => {
-        const text = $(el).text().trim();
-        if (text) headings.push(text);
-      });
+      $("h2, h3").each((_, el) => { const t = $(el).text().trim(); if (t.length > 5) headings.push(t); });
       if (headings.length) data.key_points = headings.slice(0, 10);
     }
-    // Word count estimate
     if (!data.word_count) {
       const body = $("article, main, .post-content, .entry-content").first().text();
-      if (body) {
-        data.word_count = body.trim().split(/\s+/).length;
-      }
+      if (body) data.word_count = body.trim().split(/\s+/).length;
     }
   }
 
   if (schemaName === "saas_ideas") {
-    // Collect ideas from article body headings first, then index card titles
+    // Extract ideas from article headings — filter noise aggressively
     if (!data.ideas || (data.ideas as unknown[]).length === 0) {
       const headings: string[] = [];
-      const selPriority = [
+
+      // Priority order: article body > index cards > any heading
+      const selectors = [
         ".gh-content h2", ".gh-content h3",
         ".post-content h2", ".post-content h3",
-        ".gh-card-title", ".post-card-title",
+        ".entry-content h2", ".entry-content h3",
+        // YC blog uses article tags
         "article h2", "article h3",
-        "h2", "h3",
+        // Generic
+        "main h2", "main h3",
+        // Index page card titles
+        ".gh-card-title", ".post-card-title",
+        // YC's React blog renders titles as links inside article lists
+        "article a[href*='/blog/']",
+        "a.post-title", "a.article-title",
+        // HN-style lists
+        ".title a", ".storylink",
       ];
-      for (const sel of selPriority) {
+
+      for (const sel of selectors) {
         $(sel).each((_, el) => {
-          const text = $(el).text().trim().replace(/\s+/g, " ");
-          if (text.length >= 10 && text.length <= 200 && !headings.includes(text)) {
-            headings.push(text);
-          }
+          const t = $(el).text().trim().replace(/\s+/g, " ");
+          if (isGoodIdea(t) && !headings.includes(t)) headings.push(t);
         });
-        if (headings.length >= 3) break;
+        if (headings.length >= 5) break; // Found enough quality headings
       }
-      if (headings.length) data.ideas = headings.slice(0, 30);
+
+      if (headings.length > 0) data.ideas = headings.slice(0, 30);
+    } else {
+      // Filter existing ideas array to remove noise
+      data.ideas = (data.ideas as string[]).filter(isGoodIdea).slice(0, 30);
     }
 
-    // Summary fallback from meta description
-    if (!data.summary) {
-      const desc = $("meta[name='description']").attr("content")?.trim();
-      if (desc) data.summary = desc;
-    }
-
-    // Collect article URLs from index page link text
+    // Article URLs from the page (for crawl discovery)
     if (!data.article_urls) {
       const urls: string[] = [];
       $("a[href]").each((_, el) => {
-        const href = $(el).attr("href") || "";
+        const href = $(el).attr("href") ?? "";
         const text = $(el).text().trim();
-        if (
-          href.startsWith("/") &&
-          !href.includes("#") &&
-          text.length > 15 &&
-          !urls.includes(href)
-        ) {
+        if (href.startsWith("/") && !href.includes("#") && text.length > 15 && !urls.includes(href)) {
           urls.push(href);
         }
       });
       if (urls.length) data.article_urls = urls.slice(0, 20);
+    }
+
+    // Filter article_urls — remove obvious non-article paths
+    if (data.article_urls) {
+      data.article_urls = (data.article_urls as string[]).filter((u) => {
+        return !u.match(/\/(about|contact|pricing|signin|signup|login|logout|subscribe|tag|author|category|page|rss|feed|cdn|static|api)\//i)
+          && !u.match(/\.(css|js|png|jpg|svg|ico|pdf)$/i);
+      });
+    }
+
+    // Summary from meta if not found
+    if (!data.summary) {
+      const desc = $("meta[name='description']").attr("content")?.trim();
+      if (desc && desc.length > 20) data.summary = desc;
     }
   }
 }

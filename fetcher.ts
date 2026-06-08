@@ -1,22 +1,14 @@
 /**
  * fetcher.ts
- * Dual-mode page fetcher.
+ * Dual-mode page fetcher: fast (Axios) or stealth (Playwright).
  *
- * Mode 1 — FAST (Axios):
- *   Plain HTTP request. No browser launched.
- *   ~50-200ms per page. Use for static HTML sites.
+ * EXPERT FIX: needsJsRender() was too aggressive — Next.js sites like Zapier
+ * have __NEXT_DATA__ in their HTML but still serve fully rendered static HTML.
+ * The old heuristic switched to 30s stealth for every Zapier page.
  *
- * Mode 2 — STEALTH (Playwright):
- *   Full headless browser with stealth plugin.
- *   ~2-5s per page. Use for JS-heavy / React / SPA sites.
- *
- * Mode 3 — INTERCEPT (Playwright + Network tap):
- *   Launches browser, intercepts XHR/Fetch API calls the
- *   page makes to its own backend, returns raw JSON directly.
- *   Bypasses HTML parsing entirely — fastest extraction.
- *
- * Auto-mode: tries Axios first, falls back to Playwright if
- * the response looks like it needs JS rendering.
+ * New rule: only use stealth if the HTML has NO meaningful text content,
+ * regardless of framework markers. A 612k HTML file with article text
+ * does NOT need a browser — Cheerio reads it fine.
  */
 
 import axios from "axios";
@@ -26,13 +18,10 @@ import type { Browser, BrowserContext, Page } from "playwright";
 
 chromium.use(StealthPlugin());
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const VIEWPORTS = [
   { width: 1920, height: 1080 },
   { width: 1440, height: 900 },
   { width: 1366, height: 768 },
-  { width: 1536, height: 864 },
 ];
 
 const USER_AGENTS = [
@@ -43,10 +32,10 @@ const USER_AGENTS = [
 
 const AXIOS_HEADERS = {
   "User-Agent": USER_AGENTS[0],
-  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
   "Accept-Language": "en-US,en;q=0.9",
   "Accept-Encoding": "gzip, deflate, br",
-  "Connection": "keep-alive",
+  Connection: "keep-alive",
   "Upgrade-Insecure-Requests": "1",
 };
 
@@ -54,15 +43,12 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export type FetchMode = "fast" | "stealth" | "intercept" | "auto";
 
 export interface FetchOptions {
   mode?: FetchMode;
   proxy?: string;
   timeoutMs?: number;
-  /** For intercept mode: regex to match API URLs to capture */
   interceptPattern?: RegExp;
   headless?: boolean;
 }
@@ -71,26 +57,29 @@ export interface FetchResult {
   html: string;
   finalUrl: string;
   statusCode: number | null;
-  mode: FetchMode;
-  /** Only set in intercept mode when JSON was captured */
+  fetchMode?: string;
   interceptedJson?: unknown[];
   durationMs: number;
 }
 
-// ─── JS-render detection ──────────────────────────────────────────────────────
-
+// ─── JS-render detection — CONSERVATIVE ──────────────────────────────────────
+// Only trigger stealth when the page is genuinely empty (SPA shell).
+// Do NOT trigger on Next.js/Nuxt/Gatsby markers — they server-side render.
+// Rule: if the page has actual paragraph/heading text, it's renderable by Cheerio.
 function needsJsRender(html: string): boolean {
-  // Signs that the page is a SPA shell with no real content
-  const hasReactRoot = /<div[^>]+id=["']root["'][^>]*>\s*<\/div>/i.test(html);
-  const hasNextData = /__NEXT_DATA__/.test(html);
-  const hasVueApp = /<div[^>]+id=["']app["'][^>]*>\s*<\/div>/i.test(html);
-  const veryShort = html.length < 5000;
-  const noMeaningfulContent = !/<(article|main|section|h1|p)[^>]*>/i.test(html);
-  return hasReactRoot || hasNextData || hasVueApp || (veryShort && noMeaningfulContent);
+  // Definitive empty SPA: root div with nothing inside
+  const emptyReactRoot = /<div[^>]+id=["']root["'][^>]*>\s*<\/div>/i.test(html);
+  const emptyVueApp = /<div[^>]+id=["']app["'][^>]*>\s*<\/div>/i.test(html);
+
+  // Very short AND no meaningful content tags
+  const veryShort = html.length < 3000;
+  const noContent = !/<(p|h1|h2|h3|article|main|section)[^>]*>[^<]{20,}/i.test(html);
+
+  // Only trigger if BOTH short and no content
+  return emptyReactRoot || emptyVueApp || (veryShort && noContent);
 }
 
 // ─── Fast fetch (Axios) ───────────────────────────────────────────────────────
-
 async function fetchFast(url: string, timeoutMs: number): Promise<FetchResult> {
   const start = Date.now();
   try {
@@ -104,7 +93,7 @@ async function fetchFast(url: string, timeoutMs: number): Promise<FetchResult> {
       html: res.data as string,
       finalUrl: res.request?.res?.responseUrl ?? url,
       statusCode: res.status,
-      mode: "fast",
+      fetchMode: "fast",
       durationMs: Date.now() - start,
     };
   } catch (err: unknown) {
@@ -114,7 +103,7 @@ async function fetchFast(url: string, timeoutMs: number): Promise<FetchResult> {
         html: e.response.data ?? "",
         finalUrl: url,
         statusCode: e.response.status,
-        mode: "fast",
+        fetchMode: "fast",
         durationMs: Date.now() - start,
       };
     }
@@ -123,7 +112,6 @@ async function fetchFast(url: string, timeoutMs: number): Promise<FetchResult> {
 }
 
 // ─── Stealth fetch (Playwright) ───────────────────────────────────────────────
-
 async function fetchStealth(url: string, opts: FetchOptions): Promise<FetchResult> {
   const start = Date.now();
   const { proxy, timeoutMs = 30_000, headless = true } = opts;
@@ -142,16 +130,13 @@ async function fetchStealth(url: string, opts: FetchOptions): Promise<FetchResul
   });
 
   let statusCode: number | null = null;
-
   const context: BrowserContext = await browser.newContext({
     viewport,
     userAgent,
     locale: "en-US",
     timezoneId: "America/New_York",
     ignoreHTTPSErrors: true,
-    extraHTTPHeaders: {
-      "Accept-Language": "en-US,en;q=0.9",
-    },
+    extraHTTPHeaders: { "Accept-Language": "en-US,en;q=0.9" },
   });
 
   await context.route("**/*", (route) => {
@@ -161,11 +146,8 @@ async function fetchStealth(url: string, opts: FetchOptions): Promise<FetchResul
   });
 
   const page: Page = await context.newPage();
-
   page.on("response", (response) => {
-    if (response.url().startsWith(url.split("?")[0])) {
-      statusCode = response.status();
-    }
+    if (response.url().startsWith(url.split("?")[0])) statusCode = response.status();
   });
 
   await page.addInitScript(() => {
@@ -183,16 +165,13 @@ async function fetchStealth(url: string, opts: FetchOptions): Promise<FetchResul
   const finalUrl = page.url();
   await browser.close();
 
-  return { html, finalUrl, statusCode, mode: "stealth", durationMs: Date.now() - start };
+  return { html, finalUrl, statusCode, fetchMode: "stealth", durationMs: Date.now() - start };
 }
 
-// ─── Intercept fetch (steal JSON from network) ────────────────────────────────
-
+// ─── Intercept fetch (capture API JSON from network) ─────────────────────────
 async function fetchIntercept(url: string, opts: FetchOptions): Promise<FetchResult> {
   const start = Date.now();
   const { proxy, timeoutMs = 30_000, headless = true } = opts;
-
-  // Default: catch XHR/fetch calls that return JSON arrays or objects
   const pattern = opts.interceptPattern ?? /\.(json|api|graphql|data|v\d+)/i;
   const captured: unknown[] = [];
 
@@ -210,26 +189,15 @@ async function fetchIntercept(url: string, opts: FetchOptions): Promise<FetchRes
   });
 
   const page: Page = await context.newPage();
-
-  // Tap into every response
   page.on("response", async (response) => {
     try {
       const respUrl = response.url();
-      const contentType = response.headers()["content-type"] ?? "";
-
-      // Only intercept JSON responses matching our pattern
-      if (
-        contentType.includes("application/json") &&
-        (pattern.test(respUrl) || respUrl !== url)
-      ) {
+      const ct = response.headers()["content-type"] ?? "";
+      if (ct.includes("application/json") && (pattern.test(respUrl) || respUrl !== url)) {
         const json = await response.json().catch(() => null);
-        if (json && typeof json === "object") {
-          captured.push(json);
-        }
+        if (json && typeof json === "object") captured.push(json);
       }
-    } catch {
-      // ignore non-parseable responses
-    }
+    } catch { /* ignore */ }
   });
 
   try {
@@ -243,33 +211,28 @@ async function fetchIntercept(url: string, opts: FetchOptions): Promise<FetchRes
   const finalUrl = page.url();
   await browser.close();
 
-  return {
-    html,
-    finalUrl,
-    statusCode: 200,
-    mode: "intercept",
-    interceptedJson: captured,
-    durationMs: Date.now() - start,
-  };
+  return { html, finalUrl, statusCode: 200, fetchMode: "intercept", interceptedJson: captured, durationMs: Date.now() - start };
 }
 
-// ─── Auto fetch (try fast → fallback stealth) ────────────────────────────────
-
+// ─── Auto mode: fast first, stealth only if truly needed ─────────────────────
 async function fetchAuto(url: string, opts: FetchOptions): Promise<FetchResult> {
   try {
     const result = await fetchFast(url, opts.timeoutMs ?? 15_000);
+
+    // Only fallback to stealth if page is genuinely empty
     if (!needsJsRender(result.html) && result.statusCode !== 403 && result.statusCode !== 429) {
       return result;
     }
+
     console.log(`      → JS render detected, switching to stealth browser`);
   } catch {
     console.log(`      → Axios failed, switching to stealth browser`);
   }
+
   return fetchStealth(url, opts);
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
-
 export async function fetchPage(url: string, opts: FetchOptions = {}): Promise<FetchResult> {
   const mode = opts.mode ?? "auto";
   switch (mode) {
