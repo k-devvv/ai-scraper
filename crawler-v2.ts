@@ -1,6 +1,11 @@
 /**
- * crawler-v2.ts
- * BFS deep crawler using the cheerio/hybrid pipeline.
+ * crawler-v2.ts — BFS deep crawler with smart link filtering
+ *
+ * Key features:
+ * - Seed-path scoping: if seed URL has a path (e.g. /blog), only follows links under that path
+ * - Blocks nav/asset/utility URLs automatically
+ * - Concurrency pool with polite delays
+ * - Retry with exponential backoff
  */
 
 import * as http from "http";
@@ -33,22 +38,21 @@ export interface CrawlSummary {
   totalMs: number;
 }
 
-export async function crawl(
-  seedUrl: string,
-  opts: CrawlOptions
-): Promise<CrawlSummary> {
-  const maxDepth = opts.maxDepth ?? 2;
-  const maxPages = opts.maxPages ?? 20;
-  const concurrency = opts.concurrency ?? 2;
-  const delayMs = opts.delayMs ?? 300;
-  const retries = opts.retries ?? 1;
+export async function crawl(seedUrl: string, opts: CrawlOptions): Promise<CrawlSummary> {
+  const maxDepth    = opts.maxDepth ?? 2;
+  const maxPages    = opts.maxPages ?? 20;
+  const concurrency = opts.concurrency ?? 3;
+  const delayMs     = opts.delayMs ?? 200;
+  const retries     = opts.retries ?? 1;
 
-  const seedOrigin = getOrigin(seedUrl);
-  if (!seedOrigin) throw new Error(`Invalid seed URL: ${seedUrl}`);
+  const seedParsed  = new URL(normalizeUrl(seedUrl));
+  const seedOrigin  = seedParsed.origin;
+  // Seed path scope: only crawl URLs under this path prefix
+  // e.g. https://ycombinator.com/blog → only /blog/* links
+  const seedPath    = seedParsed.pathname === "/" ? "" : seedParsed.pathname.replace(/\/$/, "");
 
   const visited = new Set<string>();
   const results: CrawlPageResult[] = [];
-
   const queue: Array<[string, number]> = [[normalizeUrl(seedUrl), 0]];
   visited.add(normalizeUrl(seedUrl));
 
@@ -62,68 +66,40 @@ export async function crawl(
       if (item) batch.push(item);
     }
 
-    await Promise.all(
-      batch.map(async ([url, depth]) => {
-        pageCount++;
-        const pageNum = pageCount;
-        console.log(`\n  [${pageNum}/${maxPages}] depth=${depth} ${url}`);
+    await Promise.all(batch.map(async ([url, depth]) => {
+      pageCount++;
+      console.log(`\n  [${pageCount}/${maxPages}] depth=${depth} ${url}`);
+      const pageStart = Date.now();
 
-        const pageStart = Date.now();
-        let pageResult: CrawlPageResult;
+      try {
+        const result = await withRetry(() => runPipeline(url, { ...opts, verbose: true }), retries);
 
-        try {
-          const result = await withRetry(
-            () => runPipeline(url, { ...opts, verbose: true }),
-            retries
-          );
-
-          const newLinks = await discoverLinks(url, seedOrigin, visited, maxDepth, depth);
-          let addedCount = 0;
-          for (const link of newLinks) {
-            if (!visited.has(link) && pageCount + queue.length < maxPages * 3) {
-              visited.add(link);
-              queue.push([link, depth + 1]);
-              addedCount++;
-            }
+        // Discover links from this page
+        const newLinks = await discoverLinks(url, seedOrigin, seedPath, visited, maxDepth, depth);
+        let added = 0;
+        for (const link of newLinks) {
+          if (!visited.has(link)) {
+            visited.add(link);
+            queue.push([link, depth + 1]);
+            added++;
           }
-
-          console.log(
-            `      ✓ conf=${result.confidence}% | ${result.fetchMs}ms fetch + ${result.extractMs}ms extract | ${addedCount} new links`
-          );
-
-          pageResult = {
-            url,
-            depth,
-            status: "success",
-            result,
-            durationMs: Date.now() - pageStart,
-          };
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          console.log(`      ✗ ${msg}`);
-          pageResult = {
-            url,
-            depth,
-            status: "error",
-            error: msg,
-            durationMs: Date.now() - pageStart,
-          };
         }
+        console.log(`      ✓ conf=${result.confidence}% | ${result.fetchMs}ms fetch + ${result.extractMs}ms extract | ${added} new links`);
 
-        results.push(pageResult);
-        if (delayMs > 0) await sleep(delayMs);
-      })
-    );
+        results.push({ url, depth, status: "success", result, durationMs: Date.now() - pageStart });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.log(`      ✗ ${msg}`);
+        results.push({ url, depth, status: "error", error: msg, durationMs: Date.now() - pageStart });
+      }
+
+      if (delayMs > 0) await sleep(delayMs);
+    }));
   }
 
   const successes = results.filter((r) => r.status === "success");
-  const confidences = successes
-    .map((r) => r.result?.confidence ?? 0)
-    .filter((c) => c > 0);
-  const avgConfidence =
-    confidences.length > 0
-      ? Math.round(confidences.reduce((a, b) => a + b, 0) / confidences.length)
-      : 0;
+  const confs = successes.map((r) => r.result?.confidence ?? 0).filter((c) => c > 0);
+  const avgConfidence = confs.length > 0 ? Math.round(confs.reduce((a, b) => a + b, 0) / confs.length) : 0;
 
   return {
     pages: results,
@@ -138,6 +114,7 @@ export async function crawl(
 async function discoverLinks(
   pageUrl: string,
   allowedOrigin: string,
+  seedPath: string,        // e.g. "/blog" — only follow links under this
   visited: Set<string>,
   maxDepth: number,
   currentDepth: number
@@ -147,55 +124,51 @@ async function discoverLinks(
   try {
     const html = await fetchRaw(pageUrl);
     const links: string[] = [];
-    const hrefRegex = /href=["']([^"'#][^"']*?)["']/gi;
-    let match: RegExpExecArray | null;
+    const re = /href=["']([^"'#][^"']*?)["']/gi;
+    let m: RegExpExecArray | null;
 
-    while ((match = hrefRegex.exec(html)) !== null) {
-      const href = match[1];
+    while ((m = re.exec(html)) !== null) {
+      const href = m[1];
       let resolved: string;
 
-      if (href.startsWith("http")) {
-        resolved = href;
-      } else if (href.startsWith("/")) {
-        resolved = allowedOrigin + href;
-      } else {
-        continue;
-      }
+      if (href.startsWith("http")) resolved = href;
+      else if (href.startsWith("/")) resolved = allowedOrigin + href;
+      else continue;
 
       let normalized: string;
-      try {
-        normalized = normalizeUrl(resolved);
-      } catch {
-        continue;
-      }
+      try { normalized = normalizeUrl(resolved); } catch { continue; }
 
-      let parsedUrl: URL;
-      try {
-        parsedUrl = new URL(normalized);
-      } catch {
-        continue;
-      }
+      let u: URL;
+      try { u = new URL(normalized); } catch { continue; }
 
-      const pathname = parsedUrl.pathname;
+      const pathname = u.pathname;
 
-      // Skip assets, noise paths, and query-string URLs
-      const isAsset = /\.(pdf|jpg|jpeg|png|gif|svg|css|js|xml|json|woff|woff2|ttf|ico|map)$/i.test(pathname);
-      const isNoise = [
-        "/tag/", "/author/", "/page/", "/rss", "/feed",
+      // Must be same origin
+      if (u.origin !== allowedOrigin) continue;
+
+      // Must be under the seed path (if seed had a non-root path)
+      if (seedPath && !pathname.startsWith(seedPath)) continue;
+
+      // Skip already visited
+      if (visited.has(normalized)) continue;
+
+      // Skip assets
+      if (/\.(pdf|jpg|jpeg|png|gif|svg|css|js|xml|json|woff|woff2|ttf|ico|map|zip|gz)$/i.test(pathname)) continue;
+
+      // Skip utility paths
+      const utilityPaths = [
+        "/tag/", "/author/", "/page/", "/rss", "/feed", "/feeds",
         "/webmentions/", "/assets/", "/public/", "/ghost/",
-        "/sitemap", "/amp/", "/subscribe", "/signin", "/signup",
-      ].some((seg) => pathname.startsWith(seg) || pathname.includes(seg));
-      const hasQuery = parsedUrl.search.length > 0;
+        "/sitemap", "/amp/", "/subscribe", "/signin", "/signup", "/login",
+        "/logout", "/account", "/cart", "/checkout", "/search",
+        "/cdn-cgi/", "/_next/", "/static/", "/api/",
+      ];
+      if (utilityPaths.some((p) => pathname.startsWith(p) || pathname.includes(p))) continue;
 
-      if (
-        getOrigin(normalized) === allowedOrigin &&
-        !visited.has(normalized) &&
-        !isAsset &&
-        !isNoise &&
-        !hasQuery
-      ) {
-        links.push(normalized);
-      }
+      // Skip query strings (tracking params etc)
+      if (u.search.length > 0) continue;
+
+      links.push(normalized);
     }
 
     return [...new Set(links)];
@@ -204,52 +177,37 @@ async function discoverLinks(
   }
 }
 
-// ─── Raw HTTP fetch for link discovery ───────────────────────────────────────
+// ─── Raw HTTP fetch (for link discovery only) ─────────────────────────────────
 function fetchRaw(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const mod = url.startsWith("https") ? https : http;
-    const req = mod.get(
-      url,
-      {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-        },
-        timeout: 8000,
-      },
-      (res) => {
-        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          fetchRaw(res.headers.location).then(resolve).catch(reject);
-          return;
-        }
-        const chunks: Buffer[] = [];
-        res.on("data", (chunk: Buffer) => chunks.push(chunk));
-        res.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-        res.on("error", reject);
+    const req = mod.get(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36" },
+      timeout: 8000,
+    }, (res) => {
+      if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        fetchRaw(res.headers.location).then(resolve).catch(reject);
+        return;
       }
-    );
+      const chunks: Buffer[] = [];
+      res.on("data", (c: Buffer) => chunks.push(c));
+      res.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+      res.on("error", reject);
+    });
     req.on("error", reject);
     req.on("timeout", () => { req.destroy(); reject(new Error("timeout")); });
   });
-}
-
-function getOrigin(url: string): string | null {
-  try { return new URL(url).origin; } catch { return null; }
 }
 
 function normalizeUrl(url: string): string {
   try {
     const u = new URL(url);
     u.hash = "";
-    u.searchParams.delete("utm_source");
-    u.searchParams.delete("utm_medium");
-    u.searchParams.delete("utm_campaign");
+    ["utm_source","utm_medium","utm_campaign","utm_content","utm_term","ref","source"].forEach((p) => u.searchParams.delete(p));
     let href = u.href;
     if (href.endsWith("/") && u.pathname !== "/") href = href.slice(0, -1);
     return href;
-  } catch {
-    return url;
-  }
+  } catch { return url; }
 }
 
 async function withRetry<T>(fn: () => Promise<T>, retries: number): Promise<T> {

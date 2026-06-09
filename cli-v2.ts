@@ -9,15 +9,17 @@
  *   sitemap <url> <schema> [options] — scrape all URLs from sitemap.xml
  *
  * Options:
- *   --mode=cheerio|hybrid|ai    default: cheerio for speed, hybrid for accuracy
- *   --pages=N                   max pages to crawl (default: 20)
- *   --depth=N                   max link depth (default: 2)
+ *   --mode=cheerio|hybrid|ai    default: cheerio
+ *   --pages=N                   max pages (default: 20)
+ *   --depth=N                   max link depth for crawl (default: 2)
  *   --concurrency=N             parallel workers (default: 3)
  *   --delay=N                   ms between requests (default: 200)
- *   --output=json,csv,md        output formats (default: json,csv)
- *   --model=qwen2.5:7b          Ollama model for AI/hybrid modes
- *   --threshold=N               override hybrid AI trigger % (schema defaults apply)
- *   --include=/path/            URL path filter (sitemap only)
+ *   --output=json,csv           save formats (default: json,csv)
+ *   --model=qwen2.5:7b          Ollama model
+ *   --threshold=N               hybrid AI trigger % override
+ *   --include=keyword           URL must contain this string (sitemap filter)
+ *                               Examples: --include=blog  --include=use-cases
+ *                               DO NOT add leading/trailing slashes — just the keyword
  */
 
 import * as fs from "fs";
@@ -55,13 +57,14 @@ if (!command || command === "schemas") {
     console.log(`  ${name.padEnd(14)} ${desc}`);
   }
   console.log("\nModes:");
-  console.log("  cheerio   Fast CSS extraction — use for bulk crawls (recommended)");
-  console.log("  hybrid    Cheerio + AI fallback — use when you need high accuracy");
-  console.log("  ai        Ollama only — use for unknown/unusual site structures");
+  console.log("  cheerio   Fast CSS extraction (default for crawl/sitemap)");
+  console.log("  hybrid    Cheerio + Ollama AI fallback (default for scrape)");
+  console.log("  ai        Ollama only — maximum accuracy, slowest");
   console.log("\nExamples:");
-  console.log("  npx tsx cli-v2.ts crawl https://blog.n8n.io saas_ideas --pages=30 --mode=cheerio --output=json,csv");
-  console.log("  npx tsx cli-v2.ts scrape https://scrapeme.live/shop/Bulbasaur/ product --mode=hybrid");
-  console.log("  npx tsx cli-v2.ts sitemap https://n8n.io saas_ideas --include=/blog/ --pages=50\n");
+  console.log("  npx tsx cli-v2.ts crawl https://blog.n8n.io saas_ideas --pages=30 --output=json,csv");
+  console.log("  npx tsx cli-v2.ts sitemap https://zapier.com saas_ideas --include=blog --pages=50");
+  console.log("  npx tsx cli-v2.ts sitemap https://www.make.com saas_ideas --include=use-cases --pages=30");
+  console.log("  npx tsx cli-v2.ts scrape https://scrapeme.live/shop/Bulbasaur/ product\n");
   process.exit(0);
 }
 
@@ -70,14 +73,13 @@ if (command === "scrape") {
   const url = args[1];
   const schema = args[2];
   if (!url || !schema) {
-    console.error("Usage: npx tsx cli-v2.ts scrape <url> <schema> [--mode=hybrid] [--output=json,csv]");
+    console.error("Usage: npx tsx cli-v2.ts scrape <url> <schema> [--mode=hybrid]");
     process.exit(1);
   }
 
   const mode = flag("mode", "hybrid") as PipelineMode;
   const formats = flag("output", "json,csv").split(",");
   const model = flag("model", "qwen2.5:7b");
-  // threshold: only used if explicitly passed — otherwise pipeline uses per-schema defaults
   const thresholdRaw = args.find((a) => a.startsWith("--threshold="));
   const threshold = thresholdRaw ? parseInt(thresholdRaw.split("=")[1], 10) : undefined;
 
@@ -94,7 +96,6 @@ if (command === "scrape") {
         ...(threshold !== undefined ? { hybridThreshold: threshold } : {}),
         verbose: true,
       });
-
       console.log("\n─── EXTRACTED DATA " + "─".repeat(42));
       console.log(JSON.stringify(result.data, null, 2));
       console.log("─".repeat(60));
@@ -102,12 +103,8 @@ if (command === "scrape") {
         `Confidence: ${result.confidence}% | Method: ${result.method} | ${result.totalMs}ms` +
         (result.inputTokens > 0 ? ` | Tokens: ${result.inputTokens}in/${result.outputTokens}out` : "")
       );
-
       console.log("\n--- SAVING OUTPUT " + "-".repeat(42));
-      await saveOutput(
-        [{ url, data: result.data, confidence: result.confidence }],
-        schema, formats, path.join(outputDir, `scrape_${ts()}`)
-      );
+      await saveOutput([{ url, data: result.data, confidence: result.confidence }], schema, formats, path.join(outputDir, `scrape_${ts()}`));
     } catch (err) {
       console.error(`\nFatal error: ${err instanceof Error ? err.message : err}`);
       if (err instanceof Error && err.stack) console.error(err.stack);
@@ -121,7 +118,7 @@ else if (command === "crawl") {
   const seedUrl = args[1];
   const schema = args[2];
   if (!seedUrl || !schema) {
-    console.error("Usage: npx tsx cli-v2.ts crawl <url> <schema> [--pages=20] [--depth=2] [--mode=cheerio]");
+    console.error("Usage: npx tsx cli-v2.ts crawl <url> <schema> [--pages=20] [--depth=2]");
     process.exit(1);
   }
 
@@ -129,7 +126,7 @@ else if (command === "crawl") {
   const maxDepth    = flagInt("depth", 2);
   const concurrency = flagInt("concurrency", 3);
   const delayMs     = flagInt("delay", 200);
-  const mode        = flag("mode", "cheerio") as PipelineMode;  // cheerio default for crawl = fast
+  const mode        = flag("mode", "cheerio") as PipelineMode;
   const formats     = flag("output", "json,csv").split(",");
   const model       = flag("model", "qwen2.5:7b");
   const thresholdRaw = args.find((a) => a.startsWith("--threshold="));
@@ -139,10 +136,6 @@ else if (command === "crawl") {
   console.log(`  CRAWLER v2 — ${mode.toUpperCase()} mode`);
   console.log(`  Seed: ${seedUrl}`);
   console.log(`  Max pages: ${maxPages} | Max depth: ${maxDepth} | Concurrency: ${concurrency}`);
-  if (mode === "hybrid") {
-    const effectiveThreshold = threshold ?? 40;
-    console.log(`  AI threshold: <${effectiveThreshold}% (schema default)`);
-  }
   console.log("─".repeat(60) + "\n");
 
   (async () => {
@@ -164,18 +157,13 @@ else if (command === "crawl") {
         .filter((p) => p.status === "success" && p.result)
         .map((p) => ({ url: p.url, data: p.result!.data, confidence: p.result!.confidence }));
 
-      if (allData.length === 0) {
-        console.log("\n⚠ No successful pages to save.");
-        return;
-      }
+      if (allData.length === 0) { console.log("\n⚠ No successful pages."); return; }
 
-      console.log(`\n─── SAMPLE (first result) ${"─".repeat(34)}`);
+      console.log(`\n─── SAMPLE ${"─".repeat(49)}`);
       console.log(JSON.stringify(allData[0].data, null, 2));
       console.log("─".repeat(60));
-
       console.log("\n--- SAVING OUTPUT " + "-".repeat(42));
       await saveOutput(allData, schema, formats, path.join(outputDir, `crawl_${ts()}`));
-
     } catch (err) {
       console.error(`\nFatal error: ${err instanceof Error ? err.message : err}`);
       if (err instanceof Error && err.stack) console.error(err.stack);
@@ -189,12 +177,14 @@ else if (command === "sitemap") {
   const siteUrl = args[1];
   const schema = args[2];
   if (!siteUrl || !schema) {
-    console.error("Usage: npx tsx cli-v2.ts sitemap <url> <schema> [--pages=50] [--include=/blog/]");
+    console.error("Usage: npx tsx cli-v2.ts sitemap <url> <schema> [--pages=50] [--include=blog]");
     process.exit(1);
   }
 
   const maxPages    = flagInt("pages", 50);
-  const include     = flag("include", "");
+  // --include accepts a plain keyword like "blog" or "use-cases"
+  // It matches if the URL contains that string anywhere
+  const includeRaw  = flag("include", "");
   const mode        = flag("mode", "cheerio") as PipelineMode;
   const formats     = flag("output", "json,csv").split(",");
   const concurrency = flagInt("concurrency", 3);
@@ -206,20 +196,35 @@ else if (command === "sitemap") {
   console.log("\n" + "─".repeat(60));
   console.log(`  SITEMAP SCRAPER — ${mode.toUpperCase()} mode`);
   console.log(`  Site: ${siteUrl} | Max: ${maxPages} | Concurrency: ${concurrency}`);
-  if (include) console.log(`  Filter: ${include}`);
+  if (includeRaw) console.log(`  Filter: URLs containing "${includeRaw}"`);
   console.log("─".repeat(60) + "\n");
 
   (async () => {
     try {
       console.log("Discovering URLs from sitemap...");
       let urls = await parseSitemap(siteUrl);
-      console.log(`  → Found ${urls.length} URLs`);
+      console.log(`  → Found ${urls.length} URLs total`);
 
-      if (include) {
-        urls = urls.filter((u) => u.includes(include));
-        console.log(`  → After filter: ${urls.length} URLs`);
+      if (includeRaw) {
+        // Strip slashes from include value for flexible matching
+        // /blog/ → blog, blog/ → blog, /blog → blog
+        const keyword = includeRaw.replace(/^\/|\/$/g, "");
+        const before = urls.length;
+        urls = urls.filter((u) => u.includes(keyword));
+        console.log(`  → After filter "${keyword}": ${urls.length} URLs (removed ${before - urls.length})`);
+
+        // Debug: show first 3 non-matching URLs if filter removed everything
+        if (urls.length === 0) {
+          console.log(`\n  ⚠ Filter "${keyword}" matched nothing. Sample URLs from sitemap:`);
+          const allUrls = await parseSitemap(siteUrl);
+          allUrls.slice(0, 8).forEach((u) => console.log(`    ${u}`));
+          console.log(`  Try --include with part of the URL path shown above.`);
+          return;
+        }
       }
 
+      // Sort: prefer shorter URLs (index pages last, article pages first)
+      urls.sort((a, b) => b.length - a.length);
       urls = urls.slice(0, maxPages);
       console.log(`  → Scraping ${urls.length} URLs\n`);
 
@@ -262,7 +267,6 @@ else if (command === "sitemap") {
   })();
 }
 
-// ─── unknown ──────────────────────────────────────────────────────────────────
 else {
   console.error(`Unknown command: "${command}"`);
   console.log("\nCommands: schemas, scrape, crawl, sitemap");
