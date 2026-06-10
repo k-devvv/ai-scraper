@@ -3,13 +3,14 @@
  * Converts raw HTML to a clean, token-efficient Markdown string.
  *
  * Why this matters for LLM extraction:
- *  - Stripping <script>, <style>, <nav> etc. can cut token count by 60–80%
- *  - Less token noise → higher extraction accuracy → lower API cost
- *  - Turndown preserves semantic structure (headings, lists, tables) that
- *    Claude uses as signals during structured extraction
+ * - Stripping <script>, <style>, <nav> etc. can cut token count by 60–80%
+ * - Less token noise → higher extraction accuracy → lower API cost
+ * - Turndown preserves semantic structure (headings, lists, tables) that
+ *   Claude uses as signals during structured extraction
  */
 
 import TurndownService from "turndown";
+
 // @ts-ignore — no official types for turndown-plugin-gfm
 import * as turndownPluginGfm from "turndown-plugin-gfm";
 
@@ -55,7 +56,9 @@ export function htmlToMarkdown(html: string): CleanResult {
   td.use(turndownPluginGfm.gfm);
 
   // Remove all noisy elements in one pass
-  td.remove(NOISE_TAGS);
+  // Cast to any: Turndown's .remove() accepts string | string[] but the type
+  // definition incorrectly narrows to keyof HTMLElementTagNameMap[]
+  td.remove(NOISE_TAGS as any);
 
   // Custom rule: collapse whitespace-only table cells
   td.addRule("cleanTableCells", {

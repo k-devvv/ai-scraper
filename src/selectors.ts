@@ -1,7 +1,7 @@
 /**
  * selectors.ts
  * CSS selector rule registry for every schema.
- * Import SCHEMA_RULES and SCHEMA_DESCRIPTIONS from here.
+ * Upgraded: pricing selectors massively expanded, all schemas improved.
  */
 
 export type FieldRule =
@@ -21,32 +21,36 @@ export const WORD_RATINGS: Record<string, number> = {
 };
 
 // ─── Product ──────────────────────────────────────────────────────────────────
+
 export const productRules: SchemaRules = {
   product_name: {
     type: "text",
     selectors: [
       "h1.product_title", "h1#productTitle", "h1.product-title",
       ".product-name h1", ".product-single__title", "h1.entry-title",
-      '[itemprop="name"]', "h1",
+      '[itemprop="name"]', ".product__title", ".pdp-title", "h1",
     ],
   },
   price: {
     type: "number",
     selectors: [
       "p.price_color", ".price_color",
-      "p.price .woocommerce-Price-amount",
-      ".woocommerce-Price-amount.amount",
+      ".woocommerce-Price-amount bdi",
       ".woocommerce-Price-amount",
       "#priceblock_ourprice", "#priceblock_dealprice",
       ".price--main", '[itemprop="price"]',
-      ".product-price", "p.price",
+      ".product-price .amount", ".product-price",
+      ".price ins .amount", ".price .amount",
+      "[data-price]", ".price",
     ],
   },
   original_price: {
     type: "number",
     selectors: [
-      ".woocommerce-Price-amount del", ".price--compare",
-      ".compare-at-price", "#listPrice", ".a-text-strike",
+      ".woocommerce-Price-amount del bdi",
+      ".woocommerce-Price-amount del",
+      ".price--compare", ".compare-at-price",
+      "#listPrice", ".a-text-strike",
     ],
   },
   currency: {
@@ -54,6 +58,7 @@ export const productRules: SchemaRules = {
     selectors: [
       '[itemprop="priceCurrency"]',
       ".woocommerce-Price-currencySymbol",
+      ".currency-symbol",
     ],
   },
   in_stock: {
@@ -62,43 +67,55 @@ export const productRules: SchemaRules = {
       ".instock", ".instock.availability", ".stock",
       ".woocommerce-stock", "#availability",
       '[itemprop="availability"]', ".product-availability",
-      ".single_add_to_cart_button",
+      ".stock-status", ".availability",
     ],
-    trueValues: ["in stock", "instock", "available", "add to cart", "buy now"],
+    trueValues: ["in stock", "instock", "available", "add to cart", "buy now", "in-stock"],
   },
   description: {
     type: "text",
     selectors: [
-      "#tab-description p",
-      ".woocommerce-product-details__short-description",
       "article.product_page > p",
       "#product-description > p",
+      "#tab-description p",
+      ".woocommerce-product-details__short-description",
       "#productDescription p",
       '[itemprop="description"]',
-      ".product-description", ".product__description",
+      ".product-description p",
+      ".product__description p",
+      ".product-description",
+      ".product__description",
     ],
   },
   sku: {
     type: "text",
-    selectors: ['[itemprop="sku"]', ".sku", ".product-sku", "#product_sku"],
+    selectors: ['[itemprop="sku"]', ".sku", ".product-sku", "#product_sku", ".product-meta__sku"],
   },
   brand: {
     type: "text",
-    selectors: ['[itemprop="brand"]', ".brand", "#bylineInfo", ".product-meta__vendor"],
+    selectors: [
+      '[itemprop="brand"] [itemprop="name"]',
+      '[itemprop="brand"]',
+      ".brand", "#bylineInfo",
+      ".product-meta__vendor", ".product-brand",
+    ],
   },
   rating: {
     type: "rating",
     selectors: [
       "p.star-rating", ".star-rating",
-      '[itemprop="ratingValue"]', ".a-icon-star span",
+      '[itemprop="ratingValue"]',
+      ".a-icon-star span",
       ".woocommerce-product-rating .rating",
+      ".product-rating .rating",
     ],
   },
   review_count: {
     type: "number",
     selectors: [
-      '[itemprop="reviewCount"]', ".woocommerce-review-link",
-      "#acrCustomerReviewText", ".review-count",
+      '[itemprop="reviewCount"]',
+      ".woocommerce-review-link",
+      "#acrCustomerReviewText",
+      ".review-count", ".rating-count",
     ],
   },
   features: {
@@ -106,21 +123,28 @@ export const productRules: SchemaRules = {
     selectors: [
       "table.table", "table.product_attributes",
       "#productDetails_techSpec_section_1 tr",
-      "#feature-bullets li", ".product-features li",
+      "#feature-bullets li",
+      ".product-features li",
       ".woocommerce-product-attributes tr",
+      ".product-specs tr",
     ],
   },
   images: {
     type: "list",
     selectors: [
-      ".woocommerce-product-gallery img", "#imgTagWrapperId img",
-      ".product__media img", "[data-zoom-image]", ".product-image img",
+      ".woocommerce-product-gallery img",
+      "#imgTagWrapperId img",
+      ".product__media img",
+      "[data-zoom-image]",
+      ".product-image img",
+      ".product-gallery img",
     ],
     limit: 5,
   },
 };
 
 // ─── Article ──────────────────────────────────────────────────────────────────
+
 export const articleRules: SchemaRules = {
   title: {
     type: "text",
@@ -132,29 +156,37 @@ export const articleRules: SchemaRules = {
   author: {
     type: "text",
     selectors: [
-      '[itemprop="author"]', ".author-name", ".byline",
+      '[itemprop="author"] [itemprop="name"]',
+      '[itemprop="author"]',
+      ".author-name", ".byline",
       '[rel="author"]', ".post-author",
     ],
   },
   published_date: {
     type: "text",
     selectors: [
-      '[itemprop="datePublished"]', "time[datetime]",
+      'time[itemprop="datePublished"]',
+      '[itemprop="datePublished"]',
+      "time[datetime]",
       ".post-date", ".entry-date", ".article-date",
     ],
   },
   summary: {
     type: "text",
     selectors: [
-      ".post-excerpt", '[itemprop="description"]',
+      ".post-excerpt",
+      '[itemprop="description"]',
       "article p:first-of-type",
     ],
   },
   content: {
     type: "text",
     selectors: [
-      "article .entry-content", ".post-content",
-      '[itemprop="articleBody"]', "article", "main",
+      "article .entry-content",
+      ".post-content",
+      '[itemprop="articleBody"]',
+      "article",
+      "main",
     ],
   },
   tags: {
@@ -167,9 +199,14 @@ export const articleRules: SchemaRules = {
     selectors: ["article h2", "article h3", ".key-points li", ".summary li"],
     limit: 10,
   },
+  word_count: {
+    type: "number",
+    selectors: [".word-count", "[data-word-count]"],
+  },
 };
 
 // ─── Job Listing ──────────────────────────────────────────────────────────────
+
 export const jobRules: SchemaRules = {
   title: {
     type: "text",
@@ -177,7 +214,7 @@ export const jobRules: SchemaRules = {
   },
   company: {
     type: "text",
-    selectors: [".company-name", '[itemprop="hiringOrganization"]', ".employer"],
+    selectors: [".company-name", '[itemprop="hiringOrganization"] [itemprop="name"]', ".employer"],
   },
   location: {
     type: "text",
@@ -210,7 +247,8 @@ export const jobRules: SchemaRules = {
   },
 };
 
-// ─── SaaS / AI Ideas — Ghost CMS + generic blogs ─────────────────────────────
+// ─── SaaS / AI Ideas ──────────────────────────────────────────────────────────
+
 export const saasIdeasRules: SchemaRules = {
   page_title: {
     type: "text",
@@ -243,7 +281,6 @@ export const saasIdeasRules: SchemaRules = {
       ".post-content > p:first-of-type",
       "article p:first-of-type",
       "main p:first-of-type",
-      "meta[name='description']",
     ],
   },
   categories: {
@@ -277,14 +314,18 @@ export const saasIdeasRules: SchemaRules = {
   tools_mentioned: {
     type: "list",
     selectors: [
-      ".gh-content code", ".post-content code",
-      "article code", ".kg-code-card code", "code",
+      ".gh-content code",
+      ".post-content code",
+      "article code",
+      ".kg-code-card code",
+      "code",
     ],
     limit: 20,
   },
 };
 
 // ─── Blog Post ────────────────────────────────────────────────────────────────
+
 export const blogRules: SchemaRules = {
   title: { type: "text", selectors: ["h1"] },
   author: {
@@ -312,6 +353,7 @@ export const blogRules: SchemaRules = {
 };
 
 // ─── Company Profile ──────────────────────────────────────────────────────────
+
 export const companyRules: SchemaRules = {
   name: { type: "text", selectors: ["h1", ".company-name", '[itemprop="name"]'] },
   description: {
@@ -342,26 +384,139 @@ export const companyRules: SchemaRules = {
 };
 
 // ─── Pricing Page ─────────────────────────────────────────────────────────────
+// Greatly expanded — covers Tailwind/CSS-module class patterns used by
+// Next.js SaaS sites (n8n, Vercel, Linear, etc.)
+
 export const pricingRules: SchemaRules = {
-  product_name: { type: "text", selectors: ["h1", ".pricing-title"] },
+  product_name: {
+    type: "text",
+    selectors: [
+      "h1",
+      ".pricing-title",
+      ".pricing-header h1",
+      "[class*='pricing'] h1",
+      "[class*='plans'] h1",
+    ],
+  },
+
+  // Tier names — the most important field
   tiers: {
     type: "list",
-    selectors: [".pricing-card h2", ".plan-name", ".tier-name", ".pricing-table th"],
+    selectors: [
+      // Generic semantic selectors
+      "[class*='plan'] h2",
+      "[class*='plan'] h3",
+      "[class*='tier'] h2",
+      "[class*='tier'] h3",
+      "[class*='pricing'] h2",
+      "[class*='pricing'] h3",
+      "[class*='card'] h2",
+      "[class*='card'] h3",
+
+      // Common class names used by popular SaaS sites
+      ".plan-name",
+      ".tier-name",
+      ".plan-title",
+      ".pricing-plan h3",
+      ".pricing-plan h2",
+      ".pricing-card h2",
+      ".pricing-card h3",
+      ".pricing-table th",
+      ".plan-header h2",
+      ".plan-header h3",
+
+      // Data attributes
+      "[data-plan-name]",
+      "[data-tier]",
+    ],
     limit: 10,
   },
+
+  // Raw price strings — kept as list for structured parsing in heuristics
   prices: {
     type: "list",
-    selectors: [".pricing-card .price", ".plan-price", ".amount", ".pricing-table td.price"],
+    selectors: [
+      "[class*='plan'] [class*='price']",
+      "[class*='tier'] [class*='price']",
+      "[class*='pricing'] [class*='price']",
+      "[class*='pricing'] [class*='amount']",
+      ".plan-price",
+      ".tier-price",
+      ".price-value",
+      ".pricing-amount",
+      ".price-number",
+      "[class*='price'] .amount",
+      "[data-price]",
+    ],
     limit: 10,
   },
+
+  // All features across all plans
   features: {
     type: "list",
-    selectors: [".pricing-card li", ".plan-features li", ".feature-list li"],
-    limit: 30,
+    selectors: [
+      "[class*='plan'] li",
+      "[class*='tier'] li",
+      "[class*='pricing'] li",
+      "[class*='feature'] li",
+      "[class*='include'] li",
+      ".plan-features li",
+      ".tier-features li",
+      ".pricing-features li",
+      ".feature-list li",
+      ".plan-benefits li",
+      "[class*='card'] ul li",
+    ],
+    limit: 60,
+  },
+
+  // Billing period options
+  billing_options: {
+    type: "list",
+    selectors: [
+      "[class*='billing'] button",
+      "[class*='toggle'] button",
+      "[class*='period'] button",
+      "[class*='interval'] button",
+      ".billing-toggle label",
+      ".period-selector label",
+      "input[name*='billing'] + label",
+      "input[name*='period'] + label",
+    ],
+    limit: 4,
+  },
+
+  // CTA buttons per plan — tells you plan names + actions
+  cta_buttons: {
+    type: "list",
+    selectors: [
+      "[class*='plan'] a[href]",
+      "[class*='tier'] a[href]",
+      "[class*='pricing'] a[href*='signup']",
+      "[class*='pricing'] a[href*='start']",
+      "[class*='pricing'] button",
+      ".plan-cta",
+      ".pricing-cta",
+    ],
+    limit: 10,
+  },
+
+  // Contact sales indicator
+  contact_sales: {
+    type: "bool",
+    selectors: [
+      "[class*='enterprise'] a",
+      "[class*='enterprise'] button",
+      "a[href*='contact']",
+      "a[href*='sales']",
+      "button[class*='contact']",
+    ],
+    trueValues: ["contact sales", "talk to sales", "contact us", "get a demo", "request demo"],
   },
 };
 
 // ─── Review Page ──────────────────────────────────────────────────────────────
+
 export const reviewRules: SchemaRules = {
   product_name: { type: "text", selectors: ["h1", '[itemprop="name"]'] },
   overall_rating: {
@@ -392,24 +547,25 @@ export const reviewRules: SchemaRules = {
 };
 
 // ─── Schema Registry ──────────────────────────────────────────────────────────
+
 export const SCHEMA_RULES: Record<string, SchemaRules> = {
-  product:    productRules,
-  article:    articleRules,
-  job:        jobRules,
+  product: productRules,
+  article: articleRules,
+  job: jobRules,
   saas_ideas: saasIdeasRules,
-  blog:       blogRules,
-  company:    companyRules,
-  pricing:    pricingRules,
-  review:     reviewRules,
+  blog: blogRules,
+  company: companyRules,
+  pricing: pricingRules,
+  review: reviewRules,
 };
 
 export const SCHEMA_DESCRIPTIONS: Record<string, string> = {
-  product:    "E-commerce product pages (name, price, stock, features)",
-  article:    "News articles (title, author, summary, key points)",
-  job:        "Job listings (title, skills, salary, responsibilities)",
+  product: "E-commerce product pages (name, price, stock, features)",
+  article: "News articles (title, author, summary, key points)",
+  job: "Job listings (title, skills, salary, responsibilities)",
   saas_ideas: "AI/SaaS business ideas from blogs and directories",
-  blog:       "Blog posts (tools mentioned, companies, code examples)",
-  company:    "Company profiles (funding, products, competitors)",
-  pricing:    "SaaS pricing pages (tiers, features, limits)",
-  review:     "Review pages (ratings, pros, cons, reviewer details)",
+  blog: "Blog posts (tools mentioned, companies, code examples)",
+  company: "Company profiles (funding, products, competitors)",
+  pricing: "SaaS pricing pages (tiers, features, limits)",
+  review: "Review pages (ratings, pros, cons, reviewer details)",
 };

@@ -1,24 +1,27 @@
 {
   "name": "ai-scraper",
-  "version": "3.1.0",
-  "description": "Production-grade scraper: Cheerio CSS + Network Intercept + Playwright Stealth + Ollama AI",
+  "version": "3.0.0",
+  "description": "Local-first AI web scraper with Ollama extraction. Zero API cost alternative to Firecrawl.",
   "scripts": {
-    "scrape": "node node_modules/tsx/dist/cli.mjs cli-v2.ts scrape",
-    "batch": "node node_modules/tsx/dist/cli.mjs cli-v2.ts batch",
-    "crawl": "node node_modules/tsx/dist/cli.mjs cli-v2.ts crawl",
-    "sitemap": "node node_modules/tsx/dist/cli.mjs cli-v2.ts sitemap",
-    "intercept": "node node_modules/tsx/dist/cli.mjs cli-v2.ts intercept",
-    "markdown": "node node_modules/tsx/dist/cli.mjs cli-v2.ts markdown",
-    "compare": "node node_modules/tsx/dist/cli.mjs cli-v2.ts compare",
-    "schemas": "node node_modules/tsx/dist/cli.mjs cli-v2.ts schemas",
-    "help": "node node_modules/tsx/dist/cli.mjs cli-v2.ts help",
-    "seed-profiles": "node node_modules/tsx/dist/cli.mjs profile-seeder.ts",
-    "demo:product": "node node_modules/tsx/dist/cli.mjs cli-v2.ts scrape https://scrapeme.live/shop/Bulbasaur/ product",
-    "demo:pricing": "node node_modules/tsx/dist/cli.mjs cli-v2.ts scrape https://n8n.io/pricing pricing --output=json,csv",
-    "demo:intercept": "node node_modules/tsx/dist/cli.mjs cli-v2.ts intercept https://www.producthunt.com/topics/ai-agents --output=json",
-    "demo:crawl": "node node_modules/tsx/dist/cli.mjs cli-v2.ts crawl https://blog.n8n.io saas_ideas --pages=10 --output=json,csv",
-    "demo:sitemap": "node node_modules/tsx/dist/cli.mjs cli-v2.ts sitemap https://n8n.io saas_ideas --include=/blog/ --pages=15 --output=json,csv",
-    "demo:compare": "node node_modules/tsx/dist/cli.mjs cli-v2.ts compare https://scrapeme.live/shop/Bulbasaur/ product"
+    "scrape":        "npx tsx src/cli.ts scrape",
+    "crawl":         "npx tsx src/cli.ts crawl",
+    "sitemap":       "npx tsx src/cli.ts sitemap",
+    "batch":         "npx tsx src/cli.ts batch",
+    "intercept":     "npx tsx src/cli.ts intercept",
+    "markdown":      "npx tsx src/cli.ts markdown",
+    "compare":       "npx tsx src/cli.ts compare",
+    "schemas":       "npx tsx src/cli.ts schemas",
+    "help":          "npx tsx src/cli.ts help",
+    "test":          "vitest run",
+    "test:watch":    "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck":     "tsc --noEmit",
+    "demo:product":  "npx tsx src/cli.ts scrape https://scrapeme.live/shop/Bulbasaur/ product",
+    "demo:pricing":  "npx tsx src/cli.ts scrape https://n8n.io/pricing pricing --output=json,csv",
+    "demo:crawl":    "npx tsx src/cli.ts crawl https://blog.n8n.io saas_ideas --pages=10 --output=json,csv",
+    "demo:sitemap":  "npx tsx src/cli.ts sitemap https://n8n.io saas_ideas --include=/blog/ --pages=15 --output=json,csv",
+    "demo:intercept":"npx tsx src/cli.ts intercept https://www.producthunt.com/topics/ai-agents --output=json",
+    "demo:compare":  "npx tsx src/cli.ts compare https://scrapeme.live/shop/Bulbasaur/ product"
   },
   "dependencies": {
     "axios": "^1.17.0",
@@ -38,6 +41,7 @@
     "@types/node": "^20.0.0",
     "@types/turndown": "^5.0.0",
     "tsx": "^4.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^1.6.0"
   }
 }

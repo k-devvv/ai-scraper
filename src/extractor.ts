@@ -12,7 +12,7 @@
 
 import { Ollama } from "ollama";
 
-const MAX_MARKDOWN_CHARS = 20_000; // ~5k tokens — safe for 7B models
+const MAX_MARKDOWN_CHARS = 40_000; // ~5k tokens — safe for 7B models
 const ollama = new Ollama({ host: "http://localhost:11434" });
 
 export interface OllamaSchema {
