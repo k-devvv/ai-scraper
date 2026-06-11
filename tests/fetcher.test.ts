@@ -317,7 +317,7 @@ describe("fetchPage — fast mode via local server", () => {
   it("returns finalUrl and durationMs", async () => {
     const { url, close } = await createServer(STATIC_PRODUCT);
     try {
-      const { fetchPage } = await import("../src/fetcher");
+      const { fetchPage } = await import("../src/fetcher.js");
       const result = await fetchPage(url, { mode: "fast", timeoutMs: 5000 });
       expect(result.finalUrl).toBeTruthy();
       expect(result.durationMs).toBeGreaterThanOrEqual(0);
