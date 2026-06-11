@@ -302,7 +302,7 @@ describe("fetchPage — fast mode via local server", () => {
     const { url, close } = await createServer(STATIC_BLOG);
     try {
       // Import here so tests that don't need it don't pay the import cost
-      const { fetchPage } = await import("../src/fetcher");
+      const { fetchPage } = await import("../src/fetcher.js");
       const result = await fetchPage(url, { mode: "fast", timeoutMs: 5000 });
       expect(result.html).toContain("How to Build a SaaS");
       expect(result.statusCode).toBe(200);
