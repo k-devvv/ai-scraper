@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
-import { runPipeline } from "../../pipeline.ts";
-import { getSitemapUrlStrings } from "../../sitemap.ts";
+import { runPipeline } from "../../src/pipeline";
+import { getSitemapUrlStrings } from "../../src/sitemap";
 import { createJob } from "../jobs/store.ts";
 import { enqueue } from "../jobs/runner.ts";
 

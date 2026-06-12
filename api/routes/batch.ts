@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { runPipeline } from "../../pipeline.ts";
+import { runPipeline } from "../../src/pipeline";
 import { createJob } from "../jobs/store.ts";
 import { enqueue } from "../jobs/runner.ts";
 

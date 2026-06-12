@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { crawl } from "../../crawler-v2.ts";
+import { crawl } from "../../src/crawler";
 import { createJob } from "../jobs/store.ts";
 import { enqueue } from "../jobs/runner.ts";
 
