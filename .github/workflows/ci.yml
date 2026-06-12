@@ -1,3 +1,4 @@
+cat > .github/workflows/ci.yml << 'EOF'
 name: CI
 
 on:
@@ -28,3 +29,8 @@ jobs:
 
       - name: Run tests
         run: npm test
+EOF
+
+git add .github/workflows/ci.yml
+git commit -m "ci: bump Node to 22, fix deprecation warning"
+git push
