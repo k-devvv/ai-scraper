@@ -21,8 +21,7 @@ export async function healthRoute(fastify: FastifyInstance): Promise<void> {
       },
     },
     async (_req, reply) => {
-      const ollamaHost =
-        process.env.OLLAMA_HOST ?? "http://localhost:11434";
+      const ollamaHost = process.env.OLLAMA_HOST ?? "http://localhost:11434";
       let ollamaStatus: "reachable" | "unreachable" = "unreachable";
 
       try {
@@ -31,13 +30,13 @@ export async function healthRoute(fastify: FastifyInstance): Promise<void> {
         });
         if (res.ok) ollamaStatus = "reachable";
       } catch {
-        ollamaStatus = "unreachable";
+        // Ollama not running or wrong host — non-fatal
       }
 
       return reply.code(200).send({
         status: ollamaStatus === "reachable" ? "ok" : "degraded",
         ollama: ollamaStatus,
-        uptime: process.uptime(),
+        uptime: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
       });
     }

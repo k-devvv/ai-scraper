@@ -13,7 +13,7 @@
 import { Ollama } from "ollama";
 
 const MAX_MARKDOWN_CHARS = 40_000; // ~5k tokens — safe for 7B models
-const ollama = new Ollama({ host: "http://localhost:11434" });
+const ollama = new Ollama({ host: process.env.OLLAMA_HOST ?? "http://localhost:11434" });
 
 export interface OllamaSchema {
   name: string;

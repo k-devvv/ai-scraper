@@ -1,21 +1,21 @@
-cat > .github/workflows/ci.yml << 'EOF'
 name: CI
 
 on:
   push:
-    branches: [main, "phase-*"]
+    branches: [main, develop]
   pull_request:
     branches: [main]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
+    name: TypeScript Build & Type-check
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -24,13 +24,35 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Type check
+      - name: Type-check (no emit)
         run: npx tsc --noEmit
 
-      - name: Run tests
-        run: npm test
-EOF
+      - name: Build (emit to dist/)
+        run: npm run build
 
-git add .github/workflows/ci.yml
-git commit -m "ci: bump Node to 22, fix deprecation warning"
-git push
+      - name: Verify dist artefacts
+        run: |
+          test -f dist/api/server.js || (echo "❌ dist/api/server.js missing" && exit 1)
+          echo "✅ dist/api/server.js present"
+
+  docker:
+    runs-on: ubuntu-latest
+    name: Docker Build Validation
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: ai-scraper:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

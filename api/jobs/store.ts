@@ -1,3 +1,11 @@
+/**
+ * api/jobs/store.ts
+ * In-memory job store with automatic TTL cleanup.
+ *
+ * Jobs are kept for JOB_TTL_MS after completion/failure (default 1 hour).
+ * A periodic sweeper runs every 5 minutes.
+ */
+
 import { randomUUID } from "crypto";
 
 export type JobType = "scrape" | "crawl" | "batch" | "sitemap";
@@ -16,6 +24,26 @@ export interface JobRecord {
 
 const store = new Map<string, JobRecord>();
 
+// ── TTL cleanup ───────────────────────────────────────────────────────────────
+const JOB_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+const sweepInterval = setInterval(() => {
+  const cutoff = Date.now() - JOB_TTL_MS;
+  for (const [id, job] of store.entries()) {
+    if (
+      (job.status === "completed" || job.status === "failed") &&
+      job.updatedAt < cutoff
+    ) {
+      store.delete(id);
+    }
+  }
+}, 5 * 60 * 1000);
+
+// Allow Node.js to exit even if interval is still registered
+sweepInterval.unref();
+
+// ── CRUD ──────────────────────────────────────────────────────────────────────
+
 export function createJob(type: JobType): JobRecord {
   const job: JobRecord = {
     id: randomUUID(),
@@ -31,10 +59,13 @@ export function createJob(type: JobType): JobRecord {
   return job;
 }
 
-export function updateJob(id: string, partial: Partial<JobRecord>): JobRecord | null {
+export function updateJob(
+  id: string,
+  partial: Partial<JobRecord>
+): JobRecord | null {
   const job = store.get(id);
   if (!job) return null;
-  const updated = { ...job, ...partial, updatedAt: Date.now() };
+  const updated: JobRecord = { ...job, ...partial, updatedAt: Date.now() };
   store.set(id, updated);
   return updated;
 }
@@ -50,19 +81,3 @@ export function deleteJob(id: string): boolean {
 export function listJobs(): JobRecord[] {
   return Array.from(store.values()).sort((a, b) => b.createdAt - a.createdAt);
 }
-
-// TTL cleanup: every 10 minutes, remove completed/failed jobs older than 1 hour
-const TTL_MS = 60 * 60 * 1000;
-const CLEANUP_INTERVAL_MS = 10 * 60 * 1000;
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, job] of store.entries()) {
-    if (
-      (job.status === "completed" || job.status === "failed") &&
-      now - job.updatedAt > TTL_MS
-    ) {
-      store.delete(id);
-    }
-  }
-}, CLEANUP_INTERVAL_MS).unref(); // .unref() so it doesn't block process exit

@@ -1,0 +1,15 @@
+node_modules
+dist
+output
+.scraper-state
+.env
+.env.local
+.git
+.gitignore
+*.log
+npm-debug.log*
+test-results
+playwright-report
+README.md
+PHASE*.md
+{

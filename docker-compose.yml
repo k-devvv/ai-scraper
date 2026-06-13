@@ -1,0 +1,49 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-scraper-ollama
+    restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-scraper-api
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOST: "0.0.0.0"
+      OLLAMA_HOST: "http://ollama:11434"
+      DEFAULT_MODEL: "${DEFAULT_MODEL:-qwen2.5:7b}"
+      API_KEY: "${API_KEY:-}"
+      WORKER_CONCURRENCY: "${WORKER_CONCURRENCY:-2}"
+      DEFAULT_MAX_PAGES: "${DEFAULT_MAX_PAGES:-20}"
+      DEFAULT_CONCURRENCY: "${DEFAULT_CONCURRENCY:-3}"
+      DEFAULT_DELAY_MS: "${DEFAULT_DELAY_MS:-200}"
+    volumes:
+      - ./output:/app/output
+      - ./.scraper-state:/app/.scraper-state
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  ollama_data:
+    name: ai-scraper-ollama-data

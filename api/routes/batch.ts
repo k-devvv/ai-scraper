@@ -1,46 +1,130 @@
 import { FastifyInstance } from "fastify";
 import { runPipeline } from "../../src/pipeline";
-import { createJob } from "../jobs/store.ts";
-import { enqueue } from "../jobs/runner.ts";
+import { createJob } from "../jobs/store";
+import { enqueue } from "../jobs/runner";
 
 interface BatchBody {
   urls: string[];
   schema: string;
   model?: string;
   mode?: "cheerio" | "hybrid" | "ai";
+  concurrency?: number;
 }
 
 export async function batchRoute(fastify: FastifyInstance): Promise<void> {
-  fastify.post<{ Body: BatchBody }>("/v1/batch", {
-    schema: {
-      description: "Scrape multiple URLs with the same schema",
-      tags: ["batch"],
-      body: {
-        type: "object",
-        required: ["urls", "schema"],
-        properties: {
-          urls: { type: "array", items: { type: "string" }, minItems: 1 },
-          schema: { type: "string" },
-          model: { type: "string" },
-          mode: { type: "string", enum: ["cheerio", "hybrid", "ai"] },
+  fastify.post<{ Body: BatchBody }>(
+    "/v1/batch",
+    {
+      schema: {
+        description:
+          "Scrape multiple URLs with the same schema. Returns a job ID to poll.",
+        tags: ["batch"],
+        body: {
+          type: "object",
+          required: ["urls", "schema"],
+          properties: {
+            urls: {
+              type: "array",
+              items: { type: "string" },
+              minItems: 1,
+              maxItems: 100,
+              description: "List of URLs to scrape",
+            },
+            schema: {
+              type: "string",
+              description: "Extraction schema name (see /v1/schemas)",
+            },
+            model: {
+              type: "string",
+              default: "qwen2.5:7b",
+            },
+            mode: {
+              type: "string",
+              enum: ["cheerio", "hybrid", "ai"],
+              default: "hybrid",
+            },
+            concurrency: {
+              type: "integer",
+              default: 2,
+              description: "Parallel scrapes within the batch",
+            },
+          },
+        },
+        response: {
+          202: {
+            type: "object",
+            properties: {
+              jobId: { type: "string" },
+              status: { type: "string" },
+              pollUrl: { type: "string" },
+              urlCount: { type: "integer" },
+            },
+          },
         },
       },
     },
-  }, async (req, reply) => {
-    const { urls, schema, model = "qwen2.5:7b", mode = "hybrid" } = req.body;
-    const job = createJob("batch");
-    enqueue(job.id, async () => {
-      const results = [];
-      for (const url of urls) {
-        try {
-          const result = await runPipeline(url, { schema, model, mode, verbose: false });
-          results.push({ url, status: "success", result });
-        } catch (err) {
-          results.push({ url, status: "error", error: err instanceof Error ? err.message : String(err) });
+    async (req, reply) => {
+      const {
+        urls,
+        schema,
+        model = process.env.DEFAULT_MODEL ?? "qwen2.5:7b",
+        mode = "hybrid",
+        concurrency = 2,
+      } = req.body;
+
+      const job = createJob("batch");
+
+      enqueue(job.id, async () => {
+        // Simple bounded concurrency without ESM-only deps
+        const results: Array<{
+          url: string;
+          status: "success" | "error";
+          result?: unknown;
+          error?: string;
+        }> = [];
+
+        const chunks: string[][] = [];
+        for (let i = 0; i < urls.length; i += concurrency) {
+          chunks.push(urls.slice(i, i + concurrency));
         }
-      }
-      return results;
-    });
-    return reply.code(202).send({ jobId: job.id, status: "queued", pollUrl: `/v1/jobs/${job.id}`, urlCount: urls.length });
-  });
+
+        for (const chunk of chunks) {
+          const chunkResults = await Promise.all(
+            chunk.map(async (url) => {
+              try {
+                const result = await runPipeline(url, {
+                  schema,
+                  model,
+                  mode,
+                  verbose: false,
+                });
+                return { url, status: "success" as const, result };
+              } catch (err) {
+                return {
+                  url,
+                  status: "error" as const,
+                  error: err instanceof Error ? err.message : String(err),
+                };
+              }
+            })
+          );
+          results.push(...chunkResults);
+        }
+
+        return {
+          total: urls.length,
+          success: results.filter((r) => r.status === "success").length,
+          failed: results.filter((r) => r.status === "error").length,
+          results,
+        };
+      });
+
+      return reply.code(202).send({
+        jobId: job.id,
+        status: "queued",
+        pollUrl: `/v1/jobs/${job.id}`,
+        urlCount: urls.length,
+      });
+    }
+  );
 }
