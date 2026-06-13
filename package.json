@@ -28,7 +28,7 @@
     "axios": "^1.7.2",
     "cheerio": "^1.0.0-rc.12",
     "dotenv": "^16.6.1",
-    "fastify": "^4.29.1",
+    "fastify": "^5.8.5",
     "ollama": "^0.5.9",
     "p-limit": "^4.0.0",
     "p-queue": "^7.4.1",
