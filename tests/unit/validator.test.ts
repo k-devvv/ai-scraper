@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+﻿import { describe, it, expect } from 'vitest';
 import { sanitizeForLLM, calculateConfidence } from '../../src/extractor/validator';
 
 describe('sanitizeForLLM', () => {
@@ -55,10 +55,18 @@ describe('calculateConfidence', () => {
     expect(calculateConfidence(null as any, ['title'], [])).toBe(0);
   });
 
-  it('weighs required fields at 70%', () => {
-    // 1 of 2 required filled, no optional
+  it('weighs required fields at 70% when optional fields exist and are empty', () => {
+    // 1 of 2 required filled, 0 of 2 optional filled
+    const score = calculateConfidence({ title: 'A' }, ['title', 'price'], ['rating', 'reviews']);
+    // required: 0.5 * 0.7 = 0.35, optional: 0 * 0.3 = 0 → 0.35
+    expect(score).toBeCloseTo(0.35, 2);
+  });
+
+  it('treats an empty optional-fields array as fully satisfied (no penalty)', () => {
+    // 1 of 2 required filled, optional array is empty — schema has no optional fields at all
     const score = calculateConfidence({ title: 'A' }, ['title', 'price'], []);
-    expect(score).toBeCloseTo(0.5 * 0.7, 2); // 0.35
+    // required: 0.5 * 0.7 = 0.35, optional: 1 (vacuously true, none to fill) * 0.3 = 0.3 → 0.65
+    expect(score).toBeCloseTo(0.65, 2);
   });
 
   it('weighs optional fields at 30%', () => {
@@ -69,15 +77,16 @@ describe('calculateConfidence', () => {
     expect(score).toBeCloseTo(0.85, 2);
   });
 
-  it('treats empty string as unfilled', () => {
+  it('treats empty string as unfilled (with optional fields present)', () => {
     const data = { title: '', price: '$10' };
-    const score = calculateConfidence(data, ['title', 'price'], []);
-    expect(score).toBeCloseTo(0.5 * 0.7, 2); // only price filled
+    const score = calculateConfidence(data, ['title', 'price'], ['rating']);
+    // required: 0.5 * 0.7 = 0.35, optional: 0 * 0.3 = 0 → 0.35
+    expect(score).toBeCloseTo(0.35, 2);
   });
 
-  it('treats null fields as unfilled', () => {
+  it('treats null fields as unfilled (with optional fields present)', () => {
     const data = { title: null, price: '$10' };
-    const score = calculateConfidence(data, ['title', 'price'], []);
+    const score = calculateConfidence(data, ['title', 'price'], ['rating']);
     expect(score).toBeCloseTo(0.35, 2);
   });
 
