@@ -1,0 +1,41 @@
+name: Weekly Security Audit
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'   # Every Monday 9:00 AM UTC
+  workflow_dispatch:        # Allow manual trigger
+
+jobs:
+  audit:
+    name: npm audit + CVE check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: npm audit (high + critical only)
+        run: npm audit --audit-level=high
+
+      - name: Check for outdated packages
+        run: npm outdated || true   # informational only, don't fail
+
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Security: npm audit found high/critical vulnerabilities',
+              body: 'Weekly security audit failed. Run `npm audit` locally to see details.',
+              labels: ['security', 'dependencies']
+            })

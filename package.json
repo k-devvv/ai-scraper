@@ -26,25 +26,32 @@
     "@fastify/swagger": "^8.15.0",
     "@fastify/swagger-ui": "^4.2.0",
     "axios": "^1.7.2",
+    "bullmq": "^5.78.1",
     "cheerio": "^1.0.0-rc.12",
     "dotenv": "^16.6.1",
-    "fastify": "^4.29.1",
+    "dotenv-safe": "^9.1.0",
+    "fastify": "^5.8.5",
+    "ioredis": "^5.10.1",
     "ollama": "^0.5.9",
     "p-limit": "^4.0.0",
     "p-queue": "^7.4.1",
     "p-retry": "^5.1.2",
+    "pino": "^10.3.1",
     "playwright": "^1.44.0",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "turndown": "^7.1.2",
-    "turndown-plugin-gfm": "^1.0.2"
+    "turndown-plugin-gfm": "^1.0.2",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/cheerio": "^0.22.35",
     "@types/node": "^20.19.43",
     "@types/turndown": "^5.0.4",
-    "pino-pretty": "^11.2.1",
+    "@vitest/coverage-v8": "^4.1.9",
+    "pino-pretty": "^11.3.0",
     "tsx": "^4.15.7",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.9"
   }
 }
