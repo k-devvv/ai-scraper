@@ -58,16 +58,16 @@ export async function markdownRoute(fastify: FastifyInstance): Promise<void> {
 
       enqueue(job.id, async () => {
         const fetchResult = await fetchPage(url, { mode: fetchMode, proxy });
-        const markdown = htmlToMarkdown(fetchResult.html);
+        const cleanResult = htmlToMarkdown(fetchResult.html);
 
         return {
           url: fetchResult.finalUrl,
-          markdown,
+          markdown: cleanResult.markdown,
           statusCode: fetchResult.statusCode,
           fetchMode: fetchResult.fetchMode,
           usedFallback: fetchResult.usedFallback,
           durationMs: fetchResult.durationMs,
-          contentLength: markdown.length,
+          contentLength: cleanResult.charCount,
         };
       });
 
@@ -79,3 +79,4 @@ export async function markdownRoute(fastify: FastifyInstance): Promise<void> {
     }
   );
 }
+

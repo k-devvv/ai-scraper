@@ -6,6 +6,7 @@ import { StateManager } from "./state-manager";
 import { validateUrl } from "./lib/sanitize";
 
 export interface CrawlOptions extends PipelineOptions {
+  proxy?: string;
   maxDepth?: number;
   maxPages?: number;
   concurrency?: number;
@@ -278,3 +279,4 @@ async function withRetry<T>(fn: () => Promise<T>, retries: number): Promise<T> {
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
+

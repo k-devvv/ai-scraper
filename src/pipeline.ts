@@ -23,6 +23,7 @@ export interface PipelineOptions {
   model?: string;
   hybridThreshold?: number;
   verbose?: boolean;
+  proxy?: string;
   fetchMode?: "auto" | "fast" | "stealth" | "intercept";
 }
 
@@ -65,7 +66,7 @@ export async function runPipeline(
   if (verbose) console.log(`[1/3] Fetching: ${url}`);
 
   const fetchStart = Date.now();
-  const fetched    = await fetchPage(url, { mode: opts.fetchMode ?? "auto" });
+  const fetched    = await fetchPage(url, { mode: opts.fetchMode ?? "auto", proxy: opts.proxy });
   const fetchMs    = Date.now() - fetchStart;
 
   if (verbose) {
@@ -310,3 +311,4 @@ function buildDynamicSchema(schemaName: string) {
     },
   };
 }
+
