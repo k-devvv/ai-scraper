@@ -9,7 +9,17 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     ports:
-      - "11434:11434"
+      - "11434:11434"  # Remove in production (see SECURITY.md)
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-scraper-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"    # Remove in production (see SECURITY.md)
 
   api:
     build:
@@ -19,6 +29,7 @@ services:
     restart: unless-stopped
     depends_on:
       - ollama
+      - redis
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -29,12 +40,16 @@ services:
       PORT: "3000"
       HOST: "0.0.0.0"
       OLLAMA_HOST: "http://ollama:11434"
+      REDIS_URL: "redis://redis:6379"
+      DB_PATH: "/app/output/scraper.db"
       DEFAULT_MODEL: "${DEFAULT_MODEL:-qwen2.5:7b}"
       API_KEY: "${API_KEY:-}"
       WORKER_CONCURRENCY: "${WORKER_CONCURRENCY:-2}"
       DEFAULT_MAX_PAGES: "${DEFAULT_MAX_PAGES:-20}"
       DEFAULT_CONCURRENCY: "${DEFAULT_CONCURRENCY:-3}"
       DEFAULT_DELAY_MS: "${DEFAULT_DELAY_MS:-200}"
+      RATE_LIMIT_MAX: "${RATE_LIMIT_MAX:-60}"
+      CORS_ORIGINS: "${CORS_ORIGINS:-*}"
     volumes:
       - ./output:/app/output
       - ./.scraper-state:/app/.scraper-state
@@ -47,3 +62,5 @@ services:
 volumes:
   ollama_data:
     name: ai-scraper-ollama-data
+  redis_data:
+    name: ai-scraper-redis-data

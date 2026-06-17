@@ -1,13 +1,17 @@
 /**
  * api/server.ts
- * Fastify REST API server for ai-scraper.
+ * Fastify REST API server for ai-scraper v3.1.
  *
  * Features:
- *   - pino-pretty in dev, structured JSON in prod
- *   - @fastify/rate-limit — 60 req/min per API key or IP
- *   - @fastify/swagger + swagger-ui at /docs
- *   - Optional X-API-Key auth (skip /docs and /v1/health)
- *   - Graceful SIGTERM / SIGINT shutdown
+ *   - Security: Helmet (CSP, HSTS), CORS, SSRF prevention, URL validation
+ *   - Auth: Optional X-API-Key
+ *   - Rate limiting: 60 req/min per key or IP
+ *   - Swagger UI at /docs
+ *   - Persistent jobs (Redis or in-memory)
+ *   - Result persistence (SQLite)
+ *   - Retry with exponential backoff
+ *   - Webhook callbacks on job completion
+ *   - Graceful shutdown (Redis + SQLite cleanup)
  */
 
 import "dotenv/config";
@@ -15,7 +19,11 @@ import Fastify from "fastify";
 import rateLimit from "@fastify/rate-limit";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
+import { registerSecurity } from "./middleware/security";
+import { closeStore } from "./jobs/store";
+import { closeDb } from "../src/lib/db";
 
+// Routes
 import { healthRoute } from "./routes/health";
 import { schemasRoute } from "./routes/schemas";
 import { jobsRoute } from "./routes/jobs";
@@ -23,6 +31,9 @@ import { scrapeRoute } from "./routes/scrape";
 import { crawlRoute } from "./routes/crawl";
 import { batchRoute } from "./routes/batch";
 import { sitemapRoute } from "./routes/sitemap";
+import { screenshotRoute } from "./routes/screenshot";
+import { mapRoute } from "./routes/map";
+import { markdownRoute } from "./routes/markdown";
 
 const API_KEY = process.env.API_KEY ?? "";
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
@@ -44,22 +55,29 @@ export async function startServer(): Promise<void> {
           }
         : undefined,
     },
+    // Security: limit payload size
+    bodyLimit: 1_048_576, // 1MB max request body
   });
 
-  // ── Swagger / OpenAPI ─────────────────────────────────────────────────────
+  // ── Security middleware ────────────────────────────────────────────────
+  await registerSecurity(fastify);
+
+  // ── Swagger / OpenAPI ─────────────────────────────────────────────────
   await fastify.register(swagger, {
     openapi: {
       info: {
         title: "ai-scraper API",
         description:
-          "REST API for local AI-powered web scraping via Ollama.\n\n" +
+          "Local-first AI web scraping REST API via Ollama.\n\n" +
           "All endpoints except `/v1/health` and `/docs` require `X-API-Key` " +
-          "when `API_KEY` env var is set.",
-        version: "3.0.0",
+          "when `API_KEY` env var is set.\n\n" +
+          "**Features:** Retry with backoff, webhook callbacks, proxy support, " +
+          "screenshot capture, URL discovery, result persistence.",
+        version: "3.1.0",
       },
       tags: [
-        { name: "scrape", description: "Single URL extraction" },
-        { name: "crawl", description: "Deep BFS crawl" },
+        { name: "scrape", description: "Single URL extraction, screenshots, markdown" },
+        { name: "crawl", description: "Deep BFS crawl, URL discovery" },
         { name: "batch", description: "Multi-URL batch scrape" },
         { name: "sitemap", description: "Sitemap-driven scrape" },
         { name: "jobs", description: "Async job management" },
@@ -86,10 +104,10 @@ export async function startServer(): Promise<void> {
     staticCSP: true,
   });
 
-  // ── Rate limiting ─────────────────────────────────────────────────────────
+  // ── Rate limiting ─────────────────────────────────────────────────────
   await fastify.register(rateLimit, {
-    max: 60,
-    timeWindow: "1 minute",
+    max: parseInt(process.env.RATE_LIMIT_MAX ?? "60", 10),
+    timeWindow: process.env.RATE_LIMIT_WINDOW ?? "1 minute",
     keyGenerator: (req) =>
       ((req.headers["x-api-key"] as string) ?? req.ip) || "unknown",
     errorResponseBuilder: (_req, context) => ({
@@ -99,11 +117,11 @@ export async function startServer(): Promise<void> {
     }),
   });
 
-  // ── API key auth hook ─────────────────────────────────────────────────────
+  // ── API key auth hook ─────────────────────────────────────────────────
   const SKIP_AUTH_PREFIXES = ["/docs", "/v1/health"];
 
   fastify.addHook("onRequest", async (req, reply) => {
-    if (!API_KEY) return; // Auth disabled
+    if (!API_KEY) return;
     if (SKIP_AUTH_PREFIXES.some((p) => req.url.startsWith(p))) return;
     const provided = req.headers["x-api-key"];
     if (!provided || provided !== API_KEY) {
@@ -114,7 +132,12 @@ export async function startServer(): Promise<void> {
     }
   });
 
-  // ── Routes ────────────────────────────────────────────────────────────────
+  // ── Request ID header ─────────────────────────────────────────────────
+  fastify.addHook("onSend", async (req, reply) => {
+    reply.header("X-Request-Id", req.id);
+  });
+
+  // ── Routes ────────────────────────────────────────────────────────────
   await fastify.register(healthRoute);
   await fastify.register(schemasRoute);
   await fastify.register(jobsRoute);
@@ -122,12 +145,17 @@ export async function startServer(): Promise<void> {
   await fastify.register(crawlRoute);
   await fastify.register(batchRoute);
   await fastify.register(sitemapRoute);
+  await fastify.register(screenshotRoute);
+  await fastify.register(mapRoute);
+  await fastify.register(markdownRoute);
 
-  // ── Graceful shutdown ─────────────────────────────────────────────────────
+  // ── Graceful shutdown ─────────────────────────────────────────────────
   const shutdown = async (signal: string): Promise<void> => {
     fastify.log.info(`Received ${signal} — shutting down gracefully`);
     try {
       await fastify.close();
+      await closeStore();
+      closeDb();
       fastify.log.info("Server closed cleanly");
       process.exit(0);
     } catch (err) {
@@ -139,14 +167,11 @@ export async function startServer(): Promise<void> {
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));
 
-  // ── Start ─────────────────────────────────────────────────────────────────
+  // ── Start ─────────────────────────────────────────────────────────────
   try {
     await fastify.listen({ port: PORT, host: HOST });
     fastify.log.info(
       `API docs: http://${HOST === "0.0.0.0" ? "localhost" : HOST}:${PORT}/docs`
-    );
-    fastify.log.info(
-      `Health:   http://${HOST === "0.0.0.0" ? "localhost" : HOST}:${PORT}/v1/health`
     );
   } catch (err) {
     fastify.log.error(err);
@@ -154,5 +179,4 @@ export async function startServer(): Promise<void> {
   }
 }
 
-// ── Entry point ──────────────────────────────────────────────────────────────
 startServer();
