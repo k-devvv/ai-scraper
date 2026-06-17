@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ai-scraper // console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0e1318;
+    --surface: #151c24;
+    --surface-2: #1b242e;
+    --line: #273039;
+    --ink: #e6edf3;
+    --ink-dim: #8b97a3;
+    --ink-faint: #5b6672;
+    --amber: #f0a830;
+    --teal: #34d3bd;
+    --coral: #f4685f;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+    --sans: "Inter", system-ui, -apple-system, sans-serif;
+    --r: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 85% -10%, rgba(52,211,189,0.06), transparent 60%),
+      radial-gradient(900px 500px at 10% 110%, rgba(240,168,48,0.05), transparent 55%),
+      var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--teal); }
+  button { font-family: var(--sans); cursor: pointer; }
+  input, select { font-family: var(--mono); }
+
+  /* ── Top bar ─────────────────────────────────────────────── */
+  header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(14,19,24,0.7);
+    backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .brand { font-family: var(--mono); font-weight: 700; letter-spacing: -0.3px; font-size: 15px; }
+  .brand .dim { color: var(--ink-faint); font-weight: 400; }
+  .conn { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 12px; color: var(--ink-dim); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-faint); box-shadow: 0 0 0 0 rgba(52,211,189,0.5); }
+  .dot.live { background: var(--teal); animation: pulse 2s infinite; }
+  .dot.down { background: var(--coral); }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(52,211,189,0.45);} 70% { box-shadow: 0 0 0 7px rgba(52,211,189,0);} 100% { box-shadow:0 0 0 0 rgba(52,211,189,0);} }
+  .spacer { flex: 1; }
+  .conf { display: flex; gap: 8px; align-items: center; }
+  .conf input {
+    background: var(--surface-2); border: 1px solid var(--line); color: var(--ink);
+    border-radius: 8px; padding: 7px 10px; font-size: 12px; width: 200px;
+  }
+  .conf input:focus { outline: none; border-color: var(--teal); }
+  .conf input.key { width: 130px; }
+
+  /* ── Layout ──────────────────────────────────────────────── */
+  main { display: grid; grid-template-columns: 360px 1fr; gap: 18px; padding: 18px 22px 60px; max-width: 1320px; margin: 0 auto; }
+  @media (max-width: 880px) { main { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+  .panel + .panel { margin-top: 18px; }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 16px; border-bottom: 1px solid var(--line);
+  }
+  .panel-head h2 { margin: 0; font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-dim); }
+  .panel-body { padding: 16px; }
+
+  label.f { display: block; font-size: 11px; font-family: var(--mono); letter-spacing: 0.6px; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 6px; }
+  .field { margin-bottom: 14px; }
+  .field input, .field select {
+    width: 100%; background: var(--surface-2); border: 1px solid var(--line); color: var(--ink);
+    border-radius: 8px; padding: 9px 11px; font-size: 13px;
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--teal); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .seg { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+  .seg button { background: transparent; border: 0; color: var(--ink-dim); padding: 7px 4px; border-radius: 6px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.4px; text-transform: uppercase; }
+  .seg button.on { background: var(--teal); color: #04201c; font-weight: 700; }
+
+  .run {
+    width: 100%; margin-top: 4px; padding: 12px; border: 0; border-radius: 8px;
+    background: linear-gradient(180deg, var(--teal), #25b29f); color: #04201c;
+    font-family: var(--mono); font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; font-size: 13px;
+  }
+  .run:hover { filter: brightness(1.07); }
+  .run:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ── Proxy lamp row (signature element) ──────────────────── */
+  .lamps { display: flex; align-items: flex-end; gap: 5px; height: 64px; padding: 6px 2px; }
+  .lamp { flex: 1; min-width: 5px; max-width: 22px; border-radius: 3px 3px 1px 1px; background: var(--ink-faint); transition: height .4s ease, background .4s ease; position: relative; }
+  .lamp.healthy { background: var(--teal); }
+  .lamp.active { background: var(--teal); animation: glow 1.6s infinite; }
+  .lamp.cooling { background: var(--amber); }
+  .lamp.quarantined { background: var(--coral); opacity: 0.7; }
+  @keyframes glow { 0%,100% { box-shadow: 0 0 2px rgba(52,211,189,0.4);} 50% { box-shadow: 0 0 11px rgba(52,211,189,0.9);} }
+  .lamp:hover .tip { display: block; }
+  .tip { display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); white-space: nowrap; background: #04090d; border: 1px solid var(--line); padding: 6px 9px; border-radius: 7px; font-family: var(--mono); font-size: 11px; color: var(--ink); z-index: 10; }
+  .pool-meta { display: flex; gap: 18px; margin-top: 10px; font-family: var(--mono); font-size: 12px; }
+  .pool-meta b { color: var(--ink); }
+  .pool-meta .lab { color: var(--ink-faint); }
+  .chip { font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 20px; border: 1px solid var(--line); color: var(--ink-dim); }
+
+  /* ── Job feed ────────────────────────────────────────────── */
+  .jobs { display: flex; flex-direction: column; gap: 10px; }
+  .job { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 13px 14px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 9px; cursor: pointer; transition: border-color .15s; }
+  .job:hover { border-color: var(--ink-faint); }
+  .job.sel { border-color: var(--teal); }
+  .badge { font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; padding: 4px 8px; border-radius: 6px; }
+  .b-queued { background: rgba(240,168,48,0.14); color: var(--amber); }
+  .b-active { background: rgba(52,211,189,0.14); color: var(--teal); }
+  .b-completed { background: rgba(52,211,189,0.2); color: var(--teal); }
+  .b-failed { background: rgba(244,104,95,0.16); color: var(--coral); }
+  .job .url { font-family: var(--mono); font-size: 12px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .job .sub { font-size: 11px; color: var(--ink-faint); font-family: var(--mono); }
+  .bar { height: 4px; border-radius: 3px; background: var(--line); overflow: hidden; margin-top: 6px; }
+  .bar > span { display: block; height: 100%; background: var(--teal); transition: width .4s; }
+  .pct { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); min-width: 34px; text-align: right; }
+
+  .empty { text-align: center; padding: 34px 16px; color: var(--ink-faint); }
+  .empty .big { font-family: var(--mono); font-size: 13px; color: var(--ink-dim); margin-bottom: 6px; }
+  .empty code { background: var(--surface-2); padding: 2px 6px; border-radius: 5px; color: var(--teal); font-size: 12px; }
+
+  pre.result { margin: 0; background: #04090d; border: 1px solid var(--line); border-radius: 9px; padding: 14px; font-family: var(--mono); font-size: 12px; color: var(--ink); max-height: 520px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+  .res-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .copy { background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-dim); border-radius: 7px; padding: 6px 11px; font-family: var(--mono); font-size: 11px; }
+  .copy:hover { color: var(--ink); border-color: var(--ink-faint); }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: #04090d; border: 1px solid var(--teal); color: var(--ink); padding: 11px 18px; border-radius: 9px; font-family: var(--mono); font-size: 12px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { *{ animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">ai-scraper <span class="dim">// console</span></div>
+  <div class="conn"><span id="dot" class="dot"></span><span id="connTxt">connecting…</span></div>
+  <div class="spacer"></div>
+  <div class="conf">
+    <input id="apiBase" placeholder="http://localhost:3000" title="API base URL" />
+    <input id="apiKey" class="key" type="password" placeholder="X-API-Key (optional)" title="API key" />
+  </div>
+</header>
+
+<main>
+  <!-- LEFT: control + proxy pool -->
+  <section>
+    <div class="panel">
+      <div class="panel-head"><h2>New run</h2><span id="actChip" class="chip">scrape</span></div>
+      <div class="panel-body">
+        <div class="field">
+          <label class="f" for="url">Target URL</label>
+          <input id="url" placeholder="https://example.com/page" />
+        </div>
+        <div class="field">
+          <label class="f">Action</label>
+          <div class="seg" id="action">
+            <button data-act="scrape" class="on">Scrape</button>
+            <button data-act="crawl">Crawl</button>
+            <button data-act="batch">Batch</button>
+            <button data-act="sitemap">Sitemap</button>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label class="f" for="schema">Schema</label>
+            <select id="schema"><option>product</option></select>
+          </div>
+          <div class="field">
+            <label class="f" for="fetchMode">Fetch mode</label>
+            <select id="fetchMode">
+              <option value="auto">auto</option>
+              <option value="fast">fast</option>
+              <option value="stealth">stealth</option>
+              <option value="intercept">intercept</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2" id="crawlOpts" style="display:none">
+          <div class="field"><label class="f" for="pages">Max pages</label><input id="pages" value="20" /></div>
+          <div class="field"><label class="f" for="depth">Max depth</label><input id="depth" value="2" /></div>
+        </div>
+        <button id="runBtn" class="run">Run</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Proxy pool</h2><span id="strategyChip" class="chip">—</span></div>
+      <div class="panel-body">
+        <div class="lamps" id="lamps"></div>
+        <div class="pool-meta">
+          <span><span class="lab">healthy</span> <b id="pHealthy" style="color:var(--teal)">0</b></span>
+          <span><span class="lab">cooling</span> <b id="pCooling" style="color:var(--amber)">0</b></span>
+          <span><span class="lab">quarantined</span> <b id="pQuar" style="color:var(--coral)">0</b></span>
+        </div>
+        <div id="poolEmpty" class="empty" style="display:none;padding:18px 4px">
+          <div class="big">No proxies loaded</div>
+          Set <code>PROXY_LIST</code> in .env, or POST <code>/v1/proxies/reload</code>.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RIGHT: job feed + result -->
+  <section>
+    <div class="panel">
+      <div class="panel-head"><h2>Job feed</h2><span id="jobCount" class="chip">0 jobs</span></div>
+      <div class="panel-body">
+        <div class="jobs" id="jobs"></div>
+        <div id="jobsEmpty" class="empty"><div class="big">No runs yet</div>Start one on the left — jobs stream in here as they run.</div>
+      </div>
+    </div>
+
+    <div class="panel" id="resPanel" style="display:none">
+      <div class="panel-head"><h2>Result</h2><span id="resJob" class="chip">—</span></div>
+      <div class="panel-body">
+        <div class="res-head">
+          <span id="resStatus" class="badge b-queued">—</span>
+          <button class="copy" id="copyBtn">Copy JSON</button>
+        </div>
+        <pre class="result" id="resBody">{}</pre>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  // ── tiny persisted settings (guarded — works self-hosted or previewed) ──
+  const mem = {};
+  const store = {
+    get: (k) => { try { return localStorage.getItem(k); } catch { return mem[k] ?? null; } },
+    set: (k, v) => { try { localStorage.setItem(k, v); } catch { mem[k] = v; } },
+  };
+  const $ = (id) => document.getElementById(id);
+  const apiBase = $("apiBase"), apiKey = $("apiKey");
+  apiBase.value = store.get("apiBase") || "http://localhost:3000";
+  apiKey.value = store.get("apiKey") || "";
+  apiBase.onchange = () => store.set("apiBase", apiBase.value.trim());
+  apiKey.onchange = () => store.set("apiKey", apiKey.value.trim());
+
+  const base = () => apiBase.value.trim().replace(/\/$/, "");
+  const headers = () => {
+    const h = { "Content-Type": "application/json" };
+    if (apiKey.value.trim()) h["X-API-Key"] = apiKey.value.trim();
+    return h;
+  };
+  async function api(path, opts = {}) {
+    const res = await fetch(base() + path, { ...opts, headers: { ...headers(), ...(opts.headers || {}) } });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || `HTTP ${res.status}`);
+    return res.json();
+  }
+  let toastT;
+  const toast = (msg) => { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2600); };
+
+  // ── action segmented control ──
+  let action = "scrape";
+  document.querySelectorAll("#action button").forEach((b) => {
+    b.onclick = () => {
+      document.querySelectorAll("#action button").forEach((x) => x.classList.remove("on"));
+      b.classList.add("on");
+      action = b.dataset.act;
+      $("actChip").textContent = action;
+      $("crawlOpts").style.display = (action === "crawl" || action === "sitemap") ? "grid" : "none";
+      $("url").placeholder = action === "batch" ? "url1, url2, url3" : "https://example.com/page";
+    };
+  });
+
+  // ── health poll ──
+  async function health() {
+    try {
+      await api("/v1/health");
+      $("dot").className = "dot live"; $("connTxt").textContent = "online";
+    } catch {
+      $("dot").className = "dot down"; $("connTxt").textContent = "offline";
+    }
+  }
+
+  // ── schemas ──
+  async function loadSchemas() {
+    try {
+      const data = await api("/v1/schemas");
+      const list = Array.isArray(data) ? data : (data.schemas || []);
+      const names = list.map((s) => (typeof s === "string" ? s : s.name)).filter(Boolean);
+      if (names.length) $("schema").innerHTML = names.map((n) => `<option>${n}</option>`).join("");
+    } catch { /* keep default option */ }
+  }
+
+  // ── proxy pool ──
+  async function loadPool() {
+    let s;
+    try { s = await api("/v1/proxies"); } catch { return; }
+    $("strategyChip").textContent = s.strategy || "—";
+    $("pHealthy").textContent = s.healthy; $("pCooling").textContent = s.cooling; $("pQuar").textContent = s.quarantined;
+    const lamps = $("lamps"), empty = $("poolEmpty");
+    if (!s.enabled || !s.proxies.length) { lamps.innerHTML = ""; empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    lamps.innerHTML = s.proxies.map((p) => {
+      const rate = p.successRate == null ? 1 : p.successRate;
+      const h = Math.max(22, Math.round(rate * 100)); // % height by success rate
+      const active = p.state === "healthy" && (p.successes + p.failures) > 0;
+      const cls = p.state + (active ? " active" : "");
+      const lat = p.avgLatencyMs != null ? `${p.avgLatencyMs}ms` : "—";
+      const pct = p.successRate != null ? Math.round(p.successRate * 100) + "%" : "new";
+      return `<div class="lamp ${cls}" style="height:${h}%">
+        <span class="tip">${p.label} · ${p.state} · ${pct} ok · ${lat}${p.bans ? " · " + p.bans + " bans" : ""}</span>
+      </div>`;
+    }).join("");
+  }
+
+  // ── job feed ──
+  let selectedId = null;
+  function badge(st) { return `<span class="badge b-${st}">${st}</span>`; }
+  async function loadJobs() {
+    let jobs;
+    try { jobs = await api("/v1/jobs"); } catch { return; }
+    jobs = Array.isArray(jobs) ? jobs : (jobs.jobs || []);
+    $("jobCount").textContent = jobs.length + (jobs.length === 1 ? " job" : " jobs");
+    const wrap = $("jobs"), empty = $("jobsEmpty");
+    if (!jobs.length) { wrap.innerHTML = ""; empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    wrap.innerHTML = jobs.map((j) => {
+      const tgt = (j.target || j.url || j.type || "").toString();
+      const ago = j.createdAt ? new Date(j.createdAt).toLocaleTimeString() : "";
+      const showBar = j.status === "active" || j.status === "queued";
+      return `<div class="job ${j.id === selectedId ? "sel" : ""}" data-id="${j.id}">
+        ${badge(j.status)}
+        <div style="min-width:0">
+          <div class="url">${j.type} · ${tgt || j.id.slice(0, 8)}</div>
+          ${showBar ? `<div class="bar"><span style="width:${j.progress || 0}%"></span></div>` : `<div class="sub">${ago}</div>`}
+        </div>
+        <div class="pct">${j.status === "active" ? (j.progress || 0) + "%" : ""}</div>
+      </div>`;
+    }).join("");
+    wrap.querySelectorAll(".job").forEach((el) => { el.onclick = () => selectJob(el.dataset.id); });
+  }
+
+  async function selectJob(id) {
+    selectedId = id;
+    document.querySelectorAll(".job").forEach((el) => el.classList.toggle("sel", el.dataset.id === id));
+    $("resPanel").style.display = "block";
+    $("resJob").textContent = id.slice(0, 8);
+    try {
+      const j = await api("/v1/jobs/" + id);
+      $("resStatus").className = "badge b-" + j.status;
+      $("resStatus").textContent = j.status;
+      const payload = j.status === "failed" ? { error: j.error } : (j.result ?? {});
+      $("resBody").textContent = JSON.stringify(payload, null, 2);
+    } catch (e) { $("resBody").textContent = "// " + e.message; }
+  }
+  $("copyBtn").onclick = () => { navigator.clipboard.writeText($("resBody").textContent); toast("Result copied"); };
+
+  // ── run ──
+  $("runBtn").onclick = async () => {
+    const url = $("url").value.trim();
+    if (!url) return toast("Enter a target URL");
+    const btn = $("runBtn"); btn.disabled = true; btn.textContent = "Dispatching…";
+    const body = { schema: $("schema").value, fetchMode: $("fetchMode").value };
+    if (action === "batch") body.urls = url.split(",").map((u) => u.trim()).filter(Boolean);
+    else body.url = url;
+    if (action === "crawl" || action === "sitemap") {
+      body.pages = parseInt($("pages").value, 10) || 20;
+      body.depth = parseInt($("depth").value, 10) || 2;
+    }
+    try {
+      const r = await api("/v1/" + action, { method: "POST", body: JSON.stringify(body) });
+      toast("Queued · " + (r.jobId ? r.jobId.slice(0, 8) : "ok"));
+      await loadJobs();
+      if (r.jobId) selectJob(r.jobId);
+    } catch (e) { toast("Failed: " + e.message); }
+    finally { btn.disabled = false; btn.textContent = "Run"; }
+  };
+
+  // ── loops ──
+  health(); loadSchemas(); loadPool(); loadJobs();
+  setInterval(health, 5000);
+  setInterval(() => { loadPool(); loadJobs(); if (selectedId) selectJob(selectedId); }, 2000);
+})();
+</script>
+</body>
+</html>

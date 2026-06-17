@@ -1,18 +1,9 @@
-/**
- * crawler.ts — BFS deep crawler with persistent state (Phase 2b)
- *
- * New in Phase 2b:
- *   - StateManager flushes visited/queue/results to disk every 10 pages
- *   - Pass resume: true in opts to pick up a crashed/interrupted crawl
- *   - SIGINT (Ctrl+C) triggers a force-save so no work is lost
- *   - crawl-complete.json written to output/ on finish
- */
-
-import * as http from "http";
+﻿import * as http from "http";
 import * as https from "https";
 import { runPipeline } from "./pipeline";
 import type { PipelineOptions, PipelineResult } from "./pipeline";
 import { StateManager } from "./state-manager";
+import { validateUrl } from "./lib/sanitize";
 
 export interface CrawlOptions extends PipelineOptions {
   maxDepth?: number;
@@ -20,8 +11,8 @@ export interface CrawlOptions extends PipelineOptions {
   concurrency?: number;
   delayMs?: number;
   retries?: number;
-  resume?: boolean;       // ← NEW: pass true to resume an interrupted crawl
-  outputDir?: string;     // ← NEW: where to write crawl-complete.json
+  resume?: boolean;
+  outputDir?: string;
 }
 
 export interface CrawlPageResult {
@@ -39,15 +30,12 @@ export interface CrawlSummary {
   totalErrors: number;
   avgConfidence: number;
   totalMs: number;
-  // Phase 2b additions
   seedUrl?: string;
   schema?: string;
   startedAt?: string;
   finishedAt?: string;
   resumed?: boolean;
 }
-
-// ─── Main crawl function ──────────────────────────────────────────────────────
 
 export async function crawl(seedUrl: string, opts: CrawlOptions): Promise<CrawlSummary> {
   const maxDepth   = opts.maxDepth   ?? 2;
@@ -57,12 +45,11 @@ export async function crawl(seedUrl: string, opts: CrawlOptions): Promise<CrawlS
   const retries    = opts.retries    ?? 1;
   const outputDir  = opts.outputDir  ?? "output";
 
-  const seedNorm   = normalizeUrl(seedUrl);
+  const seedSafe   = validateUrl(seedUrl);
+  const seedNorm   = normalizeUrl(seedSafe);
   const seedParsed = new URL(seedNorm);
   const seedOrigin = seedParsed.origin;
   const seedPath   = seedParsed.pathname === "/" ? "" : seedParsed.pathname.replace(/\/$/, "");
-
-  // ── State manager setup ─────────────────────────────────────────────────────
 
   const stateManager = new StateManager(seedNorm, opts.schema);
 
@@ -72,25 +59,21 @@ export async function crawl(seedUrl: string, opts: CrawlOptions): Promise<CrawlS
   let pageCount: number;
 
   if (opts.resume && stateManager.canResume()) {
-    // Restore previous crawl state
     const saved = stateManager.resume();
     visited   = stateManager.getVisited();
     queue     = stateManager.getQueue();
     results   = stateManager.getResults();
     pageCount = stateManager.getPageCount();
-    console.log(`\n↺ Resuming crawl of ${seedNorm} (${pageCount} pages already done)\n`);
+    console.log(`\nResuming crawl of ${seedNorm} (${pageCount} pages already done)\n`);
   } else {
-    // Fresh crawl
     visited   = new Set<string>([seedNorm]);
     queue     = [[seedNorm, 0]];
     results   = [];
     pageCount = 0;
   }
 
-  // ── SIGINT handler — save state on Ctrl+C ───────────────────────────────────
-
   const sigintHandler = () => {
-    console.log("\n\n⚠ Interrupted — saving crawl state...");
+    console.log("\n\nInterrupted - saving crawl state...");
     stateManager.save();
     console.log("Run with --resume to continue from this point.");
     process.exit(0);
@@ -98,8 +81,6 @@ export async function crawl(seedUrl: string, opts: CrawlOptions): Promise<CrawlS
   process.on("SIGINT", sigintHandler);
 
   const overallStart = Date.now();
-
-  // ── BFS loop ────────────────────────────────────────────────────────────────
 
   while (queue.length > 0 && pageCount < maxPages) {
     const batch: Array<[string, number]> = [];
@@ -121,7 +102,6 @@ export async function crawl(seedUrl: string, opts: CrawlOptions): Promise<CrawlS
           retries
         );
 
-        // Discover new links from this page
         const newLinks = await discoverLinks(url, seedOrigin, seedPath, visited, maxDepth, depth);
         let added = 0;
         for (const link of newLinks) {
@@ -133,7 +113,7 @@ export async function crawl(seedUrl: string, opts: CrawlOptions): Promise<CrawlS
         }
 
         console.log(
-          ` ✓ conf=${result.confidence}% | ` +
+          ` conf=${result.confidence}% | ` +
           `${result.fetchMs}ms fetch + ${result.extractMs}ms extract | ` +
           `${added} new links`
         );
@@ -145,7 +125,7 @@ export async function crawl(seedUrl: string, opts: CrawlOptions): Promise<CrawlS
 
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.log(` ✗ ${msg}`);
+        console.log(` ERROR: ${msg}`);
         pageResult = {
           url, depth, status: "error",
           error: msg, durationMs: Date.now() - pageStart,
@@ -153,19 +133,14 @@ export async function crawl(seedUrl: string, opts: CrawlOptions): Promise<CrawlS
       }
 
       results.push(pageResult);
-
-      // Persist state every FLUSH_EVERY pages
       stateManager.recordPage(pageResult, visited, queue);
 
       if (delayMs > 0) await sleep(delayMs);
     }));
   }
 
-  // ── Cleanup ─────────────────────────────────────────────────────────────────
-
   process.off("SIGINT", sigintHandler);
 
-  // Write final summary + delete state file
   const completeSummary = stateManager.complete(outputDir);
 
   const successes = results.filter((r) => r.status === "success");
@@ -180,7 +155,6 @@ export async function crawl(seedUrl: string, opts: CrawlOptions): Promise<CrawlS
     totalErrors: results.length - successes.length,
     avgConfidence: avgConf,
     totalMs: Date.now() - overallStart,
-    // Phase 2b summary fields
     seedUrl:    completeSummary.seedUrl,
     schema:     completeSummary.schema,
     startedAt:  completeSummary.startedAt,
@@ -188,8 +162,6 @@ export async function crawl(seedUrl: string, opts: CrawlOptions): Promise<CrawlS
     resumed:    completeSummary.resumed,
   };
 }
-
-// ─── Link discovery ───────────────────────────────────────────────────────────
 
 async function discoverLinks(
   pageUrl: string,
@@ -215,8 +187,11 @@ async function discoverLinks(
       else if (href.startsWith("/")) resolved = allowedOrigin + href;
       else continue;
 
+      let safe: string;
+      try { safe = validateUrl(resolved); } catch { continue; }
+
       let normalized: string;
-      try { normalized = normalizeUrl(resolved); } catch { continue; }
+      try { normalized = normalizeUrl(safe); } catch { continue; }
 
       let u: URL;
       try { u = new URL(normalized); } catch { continue; }
@@ -247,13 +222,12 @@ async function discoverLinks(
   }
 }
 
-// ─── Raw HTTP fetch (for link discovery only — no Playwright) ─────────────────
-
 function fetchRaw(url: string): Promise<string> {
+  const safeUrl = validateUrl(url);
   return new Promise((resolve, reject) => {
-    const mod = url.startsWith("https") ? https : http;
+    const mod = safeUrl.startsWith("https") ? https : http;
     const req = mod.get(
-      url,
+      safeUrl,
       {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
@@ -275,8 +249,6 @@ function fetchRaw(url: string): Promise<string> {
     req.on("timeout", () => { req.destroy(); reject(new Error("timeout")); });
   });
 }
-
-// ─── Utilities ────────────────────────────────────────────────────────────────
 
 export function normalizeUrl(url: string): string {
   try {
