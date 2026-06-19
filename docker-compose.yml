@@ -3,13 +3,11 @@ services:
     image: ollama/ollama:latest
     container_name: ai-scraper-ollama
     restart: unless-stopped
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
+    dns: [8.8.8.8, 8.8.4.4]
     volumes:
       - ollama_data:/root/.ollama
     ports:
-      - "11434:11434"  # Remove in production (see SECURITY.md)
+      - "11434:11434"
 
   redis:
     image: redis:7-alpine
@@ -18,8 +16,18 @@ services:
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
+
+  tor:
+    image: dperson/torproxy:latest
+    container_name: ai-scraper-tor
+    restart: unless-stopped
+    environment:
+      - TOR_MaxCircuitDirtiness=60
+      - TOR_NewCircuitPeriod=30
     ports:
-      - "6379:6379"    # Remove in production (see SECURITY.md)
+      - "9050:9050"   # SOCKS5 proxy
+      - "9051:9051"   # Control port
+    dns: [8.8.8.8, 8.8.4.4]
 
   api:
     build:
@@ -30,9 +38,8 @@ services:
     depends_on:
       - ollama
       - redis
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
+      - tor
+    dns: [8.8.8.8, 8.8.4.4]
     ports:
       - "${PORT:-3000}:3000"
     environment:
@@ -45,14 +52,21 @@ services:
       DEFAULT_MODEL: "${DEFAULT_MODEL:-qwen2.5:7b}"
       API_KEY: "${API_KEY:-}"
       WORKER_CONCURRENCY: "${WORKER_CONCURRENCY:-2}"
-      DEFAULT_MAX_PAGES: "${DEFAULT_MAX_PAGES:-20}"
-      DEFAULT_CONCURRENCY: "${DEFAULT_CONCURRENCY:-3}"
-      DEFAULT_DELAY_MS: "${DEFAULT_DELAY_MS:-200}"
+      # Tor config
+      USE_TOR: "true"
+      TOR_SOCKS_HOST: "tor"
+      TOR_SOCKS_PORT: "9050"
+      TOR_CONTROL_PORT: "9051"
+      TOR_ROTATE_EVERY: "10"
+      # Optional manual proxy list (comma-separated)
+      PROXY_LIST: "${PROXY_LIST:-}"
+      # Rate limits
       RATE_LIMIT_MAX: "${RATE_LIMIT_MAX:-60}"
       CORS_ORIGINS: "${CORS_ORIGINS:-*}"
     volumes:
       - ./output:/app/output
       - ./.scraper-state:/app/.scraper-state
+      - ./.sessions:/app/.sessions
     logging:
       driver: "json-file"
       options:
