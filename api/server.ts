@@ -1,5 +1,5 @@
 /**
- * api/server.ts — Phase 3: TLS spoof + Tor + proxy pool
+ * api/server.ts — Phase 3c/3d: Nitter + authenticated sessions
  */
 
 import "dotenv/config";
@@ -23,6 +23,8 @@ import { screenshotRoute } from "./routes/screenshot";
 import { mapRoute } from "./routes/map";
 import { markdownRoute } from "./routes/markdown";
 import { proxyRoute } from "./routes/proxy";
+import { sessionsRoute } from "./routes/sessions";
+import { socialRoute } from "./routes/social";
 
 const API_KEY = process.env.API_KEY ?? "";
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
@@ -40,22 +42,24 @@ export async function startServer(): Promise<void> {
     bodyLimit: 1_048_576,
   });
 
-  // ── Security ───────────────────────────────────────────────────────────────
   await registerSecurity(fastify);
 
-  // ── Swagger ────────────────────────────────────────────────────────────────
   await fastify.register(swagger, {
     openapi: {
       info: {
         title: "ai-scraper API",
-        description: "Local-first AI web scraping with TLS fingerprint spoofing + Tor IP rotation.",
-        version: "3.2.0",
+        description:
+          "Local-first AI web scraping with TLS fingerprint spoofing, Tor IP rotation, " +
+          "Nitter-based Twitter/X scraping, and authenticated social media sessions.",
+        version: "3.3.0",
       },
       tags: [
         { name: "scrape", description: "Single URL extraction, screenshots, markdown" },
         { name: "crawl", description: "Deep BFS crawl, URL discovery" },
         { name: "batch", description: "Multi-URL batch scrape" },
         { name: "sitemap", description: "Sitemap-driven scrape" },
+        { name: "social", description: "Twitter/X (Nitter) + authenticated social scraping" },
+        { name: "sessions", description: "Cookie session management for authenticated scraping" },
         { name: "jobs", description: "Async job management" },
         { name: "schemas", description: "Extraction schemas" },
         { name: "system", description: "Health, proxy pool, system info" },
@@ -74,7 +78,6 @@ export async function startServer(): Promise<void> {
     staticCSP: true,
   });
 
-  // ── Rate limiting ──────────────────────────────────────────────────────────
   await fastify.register(rateLimit, {
     max: parseInt(process.env.RATE_LIMIT_MAX ?? "60", 10),
     timeWindow: process.env.RATE_LIMIT_WINDOW ?? "1 minute",
@@ -86,7 +89,6 @@ export async function startServer(): Promise<void> {
     }),
   });
 
-  // ── Auth ───────────────────────────────────────────────────────────────────
   const SKIP_AUTH = ["/docs", "/v1/health"];
   fastify.addHook("onRequest", async (req, reply) => {
     if (!API_KEY) return;
@@ -111,6 +113,8 @@ export async function startServer(): Promise<void> {
   await fastify.register(mapRoute);
   await fastify.register(markdownRoute);
   await fastify.register(proxyRoute);
+  await fastify.register(sessionsRoute);
+  await fastify.register(socialRoute);
 
   // ── Graceful shutdown ──────────────────────────────────────────────────────
   const shutdown = async (signal: string): Promise<void> => {
@@ -128,12 +132,10 @@ export async function startServer(): Promise<void> {
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));
 
-  // ── Start ──────────────────────────────────────────────────────────────────
   try {
     await fastify.listen({ port: PORT, host: HOST });
     fastify.log.info(`Docs: http://localhost:${PORT}/docs`);
 
-    // Init proxy pool in background (non-blocking)
     const pool = ProxyPool.getInstance();
     pool.initTor().catch((err) => {
       fastify.log.warn(`[tor] Init failed: ${(err as Error).message}`);
