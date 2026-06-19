@@ -31,11 +31,10 @@ interface NitterInstance {
 }
 
 const DEFAULT_INSTANCES = [
-  "https://nitter.privacydev.net",
+  "https://xcancel.com",
+  "https://nitter.tiekoetter.com",
   "https://nitter.poast.org",
-  "https://nitter.lunar.icu",
   "https://nitter.cz",
-  "https://nitter.projectsegfau.lt",
   "https://nitter.1d4.us",
 ];
 
