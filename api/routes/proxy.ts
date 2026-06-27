@@ -73,7 +73,7 @@ export async function proxyRoute(fastify: FastifyInstance): Promise<void> {
       const running = await tor.isRunning();
 
       if (!running) {
-        return reply.code(503).send({
+        return (reply as any).code(503).send({
           success: false,
           message: "Tor is not running. Start with USE_TOR=true and ensure Tor is installed.",
         });

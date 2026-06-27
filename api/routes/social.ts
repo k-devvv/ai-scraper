@@ -210,9 +210,10 @@ export async function socialRoute(fastify: FastifyInstance): Promise<void> {
             };
           }
 
+          const schemaLookup = (SCHEMA_MAP as Record<string, any>)[schema];
           const aiResult = await extractWithOllama(
             markdown,
-            schema,
+            schemaLookup,
             model ?? process.env.DEFAULT_MODEL ?? "qwen2.5:7b"
           );
 
@@ -222,7 +223,6 @@ export async function socialRoute(fastify: FastifyInstance): Promise<void> {
             authenticated: true,
             sessionId: authResult.sessionId,
             data: aiResult.data,
-            confidence: aiResult.confidence,
             method: "ai",
             inputTokens: aiResult.inputTokens,
             outputTokens: aiResult.outputTokens,
