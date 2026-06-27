@@ -142,7 +142,7 @@ async function fetchFast(
         devices: ["desktop"],
         locales: ["en-US", "en"],
         operatingSystems: ["windows", "macos", "linux"],
-      },
+      } as any,
       ...(proxy
         ? {
             agent: {
@@ -152,9 +152,7 @@ async function fetchFast(
           }
         : {}),
       timeout: { request: timeoutMs },
-
-
-    });
+    } as any);
 
     return {
       html: res.body,
@@ -362,5 +360,3 @@ export async function fetchPage(url: string, opts: FetchOptions = {}): Promise<F
     default:          return fetchAuto(url, opts);
   }
 }
-
-
