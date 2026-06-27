@@ -152,7 +152,7 @@ async function fetchFast(
           }
         : {}),
       timeout: { request: timeoutMs },
-      maxRedirects: 5,
+
       throwHttpErrors: false,
     });
 
