@@ -153,7 +153,7 @@ async function fetchFast(
         : {}),
       timeout: { request: timeoutMs },
 
-      throwHttpErrors: false,
+
     });
 
     return {
