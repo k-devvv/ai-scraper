@@ -1,49 +1,30 @@
 /**
- * fetcher.ts — Tiered Fetch Engine (Phase 2)
+ * fetcher.ts — Tiered Fetch Engine (Phase 3)
  *
- * Strategy:
- *   auto (default) → try Axios first (~100ms)
- *                  → if JS-render detected OR blocked (403/429/empty), escalate to Playwright
- *
- * This cuts crawl time by 40–60% on static sites (blogs, docs, pricing pages)
- * while still handling SPAs and bot-protected pages transparently.
+ * Tier 1 — got-scraping (TLS fingerprint spoof, impersonates Chrome 120+)
+ * Tier 2 — Playwright stealth browser (JS-heavy / bot-protected pages)
+ * Tier 3 — Playwright + XHR intercept (steal JSON from API calls)
  *
  * Modes:
- *   fast      — Axios only, never escalates (use for known static sites)
- *   stealth   — Playwright only (use for known JS-heavy / protected sites)
- *   intercept — Playwright + XHR tap (use to steal JSON from API calls)
- *   auto      — smart tiered: Axios → Playwright fallback (RECOMMENDED)
+ *   fast      — got-scraping only, never escalates
+ *   stealth   — Playwright only
+ *   intercept — Playwright + XHR tap
+ *   auto      — got-scraping → Playwright fallback (RECOMMENDED)
+ *
+ * Proxy support:
+ *   Any http/https/socks5 URL — e.g. "socks5://127.0.0.1:9050" for Tor
  */
 
-import axios from "axios";
-import type { AxiosProxyConfig } from "axios";
+import { gotScraping } from "got-scraping";
 import { chromium } from "playwright-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import type { Browser, BrowserContext, Page } from "playwright";
-import { proxyPool, classifyOutcome } from "./lib/proxy-pool";
+import { HttpsProxyAgent } from "https-proxy-agent";
+import { SocksProxyAgent } from "socks-proxy-agent";
 
 chromium.use(StealthPlugin());
 
-/** Build an Axios proxy config from a proxy URL. Returns false to disable. */
-function axiosProxy(proxyUrl?: string): AxiosProxyConfig | false {
-  if (!proxyUrl) return false;
-  try {
-    const u = new URL(proxyUrl);
-    if (!u.protocol.startsWith("http")) return false; // socks → Playwright only
-    return {
-      protocol: u.protocol.replace(":", ""),
-      host: u.hostname,
-      port: parseInt(u.port || "80", 10),
-      ...(u.username
-        ? { auth: { username: decodeURIComponent(u.username), password: decodeURIComponent(u.password) } }
-        : {}),
-    };
-  } catch {
-    return false;
-  }
-}
-
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const VIEWPORTS = [
   { width: 1920, height: 1080 },
@@ -52,28 +33,19 @@ const VIEWPORTS = [
   { width: 1536, height: 864 },
 ];
 
-const USER_AGENTS = [
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-];
+const CHROME_VERSIONS = [120, 121, 122, 123, 124, 125];
 
-const AXIOS_HEADERS = {
-  "Accept":                  "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  "Accept-Language":         "en-US,en;q=0.9",
-  "Accept-Encoding":         "gzip, deflate, br",
-  "Connection":              "keep-alive",
-  "Upgrade-Insecure-Requests": "1",
-};
-
-/** Resource types to block in Playwright (fonts/media waste bandwidth, never needed) */
 const BLOCKED_RESOURCE_TYPES = new Set(["font", "media", "websocket"]);
 
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+function randomChromeVersion(): number {
+  return pick(CHROME_VERSIONS);
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 export type FetchMode = "fast" | "stealth" | "intercept" | "auto";
 
@@ -91,22 +63,12 @@ export interface FetchResult {
   statusCode: number | null;
   mode: FetchMode;
   fetchMode: FetchMode;
-  usedFallback: boolean;       // ← true when auto-mode escalated to Playwright
+  usedFallback: boolean;
   interceptedJson?: unknown[];
   durationMs: number;
 }
 
-// ─── JS-render detection ──────────────────────────────────────────────────────
-//
-// These are the signals that indicate a page needs JavaScript to render its
-// real content. If ANY signal fires, we escalate to Playwright.
-//
-// Signals (ordered by specificity):
-//   1. Framework markers   — React root, Next.js data, Vue app, Nuxt, Angular
-//   2. Empty body          — HTML shell with no meaningful text content
-//   3. Loading indicators  — "Loading..." placeholders in near-empty bodies
-//   4. Cloudflare / WAF    — challenge pages that need a real browser to solve
-//   5. Very short response — under 2KB is almost always a shell
+// ── JS-render detection ───────────────────────────────────────────────────────
 
 export interface JsRenderSignal {
   triggered: boolean;
@@ -114,91 +76,105 @@ export interface JsRenderSignal {
 }
 
 export function detectJSRender(html: string): JsRenderSignal {
-  // 1. Framework markers
   if (/__NEXT_DATA__/.test(html))
     return { triggered: true, reason: "Next.js SSR marker detected" };
-
   if (/window\.__NUXT__/.test(html))
     return { triggered: true, reason: "Nuxt.js marker detected" };
-
   if (/ng-version=/.test(html) || /ng-app=/.test(html))
     return { triggered: true, reason: "Angular app marker detected" };
-
   if (/<div[^>]+id=["']app["'][^>]*>\s*<\/div>/i.test(html))
     return { triggered: true, reason: "Empty Vue/generic app root" };
-
   if (/<div[^>]+id=["']root["'][^>]*>\s*<\/div>/i.test(html))
     return { triggered: true, reason: "Empty React root div" };
-
   if (/window\.__INITIAL_STATE__/.test(html) || /window\.__PRELOADED_STATE__/.test(html))
     return { triggered: true, reason: "Redux/Vuex preloaded state marker" };
-
-  // 2. Cloudflare / WAF challenge
   if (/cf-browser-verification|challenge-form|jschl-answer|cf_chl_prog/.test(html))
     return { triggered: true, reason: "Cloudflare challenge page" };
-
   if (/Enable JavaScript and cookies to continue/.test(html))
     return { triggered: true, reason: "JS required banner" };
-
-  // 3. Very short body with no meaningful semantic content
+  if (/datadome/.test(html.toLowerCase()))
+    return { triggered: true, reason: "DataDome bot protection detected" };
+  if (/perimeterx|px-captcha/.test(html.toLowerCase()))
+    return { triggered: true, reason: "PerimeterX bot protection detected" };
   if (html.length < 2000) {
     const hasMeaningfulTag = /<(article|main|section|h1|h2|p|table|ul|ol)[^>]*>/i.test(html);
     if (!hasMeaningfulTag)
       return { triggered: true, reason: `Short response (${html.length} chars) with no semantic content` };
   }
-
-  // 4. Loading placeholder text in body
   if (/<body[^>]*>\s*(<[^>]+>\s*)*Loading\.{0,3}\s*(<\/[^>]+>\s*)*<\/body>/i.test(html))
     return { triggered: true, reason: "Loading placeholder in body" };
-
   return { triggered: false, reason: "static" };
 }
 
-// ─── Fast fetch (Axios) ───────────────────────────────────────────────────────
+// ── Proxy agent builder ───────────────────────────────────────────────────────
 
-async function fetchFast(url: string, timeoutMs: number, proxy?: string): Promise<FetchResult> {
+function buildProxyAgent(proxy: string): HttpsProxyAgent<string> | SocksProxyAgent {
+  if (proxy.startsWith("socks4") || proxy.startsWith("socks5")) {
+    return new SocksProxyAgent(proxy);
+  }
+  return new HttpsProxyAgent(proxy);
+}
+
+// ── Tier 1: got-scraping (TLS fingerprint spoof) ──────────────────────────────
+//
+// got-scraping impersonates Chrome's exact TLS ClientHello:
+//   - Cipher suite order matches Chrome 120+
+//   - ALPN extensions (h2, http/1.1)
+//   - Real Chrome Accept-Language, Accept-Encoding headers
+//   - Randomised minor version for each request
+//
+// This bypasses TLS fingerprint checks (JA3/JA4 matching) that block
+// Node.js's default TLS stack. Works against Cloudflare basic + most WAFs.
+
+async function fetchFast(
+  url: string,
+  timeoutMs: number,
+  proxy?: string
+): Promise<FetchResult> {
   const start = Date.now();
+  const chromeVersion = randomChromeVersion();
+
   try {
-    const res = await axios.get<string>(url, {
-      headers: { ...AXIOS_HEADERS, "User-Agent": pick(USER_AGENTS) },
-      timeout: timeoutMs,
-      maxRedirects: 5,
-      responseType: "text",
-      proxy: axiosProxy(proxy),
-    });
+    const res = await gotScraping({
+      url,
+      headerGeneratorOptions: {
+        browsers: [{ name: "chrome", minVersion: chromeVersion }],
+        devices: ["desktop"],
+        locales: ["en-US", "en"],
+        operatingSystems: ["windows", "macos", "linux"],
+      } as any,
+      ...(proxy
+        ? {
+            agent: {
+              http: buildProxyAgent(proxy) as any,
+              https: buildProxyAgent(proxy) as any,
+            },
+          }
+        : {}),
+      timeout: { request: timeoutMs },
+    } as any);
+
     return {
-      html: res.data,
-      finalUrl: (res.request as any)?.res?.responseUrl ?? url,
-      statusCode: res.status,
+      html: res.body,
+      finalUrl: res.url,
+      statusCode: res.statusCode,
       mode: "fast",
       fetchMode: "fast",
       usedFallback: false,
       durationMs: Date.now() - start,
     };
-  } catch (err: unknown) {
-    const e = err as { response?: { status: number; data: string } };
-    if (e.response) {
-      return {
-        html: e.response.data ?? "",
-        finalUrl: url,
-        statusCode: e.response.status,
-        mode: "fast",
-        fetchMode: "fast",
-        usedFallback: false,
-        durationMs: Date.now() - start,
-      };
-    }
+  } catch (err) {
     throw err;
   }
 }
 
-// ─── Stealth fetch (Playwright) ───────────────────────────────────────────────
+// ── Tier 2: Playwright stealth ────────────────────────────────────────────────
 
 async function fetchStealth(url: string, opts: FetchOptions): Promise<FetchResult> {
   const start = Date.now();
   const { proxy, timeoutMs = 30_000, headless = true } = opts;
-  const viewport  = pick(VIEWPORTS);
-  const userAgent = pick(USER_AGENTS);
+  const viewport = pick(VIEWPORTS);
+  const chromeVersion = randomChromeVersion();
 
   const browser: Browser = await (chromium as any).launch({
     headless,
@@ -206,6 +182,7 @@ async function fetchStealth(url: string, opts: FetchOptions): Promise<FetchResul
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-blink-features=AutomationControlled",
+      "--disable-features=IsolateOrigins,site-per-process",
       `--window-size=${viewport.width},${viewport.height}`,
     ],
     ...(proxy ? { proxy: { server: proxy } } : {}),
@@ -215,14 +192,18 @@ async function fetchStealth(url: string, opts: FetchOptions): Promise<FetchResul
 
   const context: BrowserContext = await browser.newContext({
     viewport,
-    userAgent,
+    userAgent: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion}.0.0.0 Safari/537.36`,
     locale: "en-US",
     timezoneId: "America/New_York",
     ignoreHTTPSErrors: true,
-    extraHTTPHeaders: { "Accept-Language": "en-US,en;q=0.9" },
+    extraHTTPHeaders: {
+      "Accept-Language": "en-US,en;q=0.9",
+      "sec-ch-ua": `"Chromium";v="${chromeVersion}", "Google Chrome";v="${chromeVersion}", "Not_A Brand";v="24"`,
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": '"Windows"',
+    },
   });
 
-  // Block fonts/media/websockets — saves 30-50% of page load time
   await context.route("**/*", (route) => {
     if (BLOCKED_RESOURCE_TYPES.has(route.request().resourceType())) {
       return route.abort();
@@ -232,14 +213,21 @@ async function fetchStealth(url: string, opts: FetchOptions): Promise<FetchResul
 
   const page: Page = await context.newPage();
 
+  await page.addInitScript(() => {
+    Object.defineProperty((globalThis as any).navigator, "webdriver", { get: () => false });
+    Object.defineProperty((globalThis as any).navigator, "plugins", {
+      get: () => [1, 2, 3, 4, 5],
+    });
+    Object.defineProperty((globalThis as any).navigator, "languages", {
+      get: () => ["en-US", "en"],
+    });
+    (globalThis as any).chrome = { runtime: {} };
+  });
+
   page.on("response", (response) => {
     if (response.url().startsWith(url.split("?")[0])) {
       statusCode = response.status();
     }
-  });
-
-  await page.addInitScript(() => {
-    Object.defineProperty((globalThis as any).navigator, "webdriver", { get: () => false });
   });
 
   try {
@@ -249,7 +237,7 @@ async function fetchStealth(url: string, opts: FetchOptions): Promise<FetchResul
     await page.waitForTimeout(2000);
   }
 
-  const html     = await page.content();
+  const html = await page.content();
   const finalUrl = page.url();
   await browser.close();
 
@@ -264,10 +252,10 @@ async function fetchStealth(url: string, opts: FetchOptions): Promise<FetchResul
   };
 }
 
-// ─── Intercept fetch (steal JSON from XHR/Fetch calls) ────────────────────────
+// ── Tier 3: XHR intercept ────────────────────────────────────────────────────
 
 async function fetchIntercept(url: string, opts: FetchOptions): Promise<FetchResult> {
-  const start   = Date.now();
+  const start = Date.now();
   const { proxy, timeoutMs = 30_000, headless = true } = opts;
   const pattern = opts.interceptPattern ?? /\/(api|json|data|v\d+|graphql)\//i;
   const captured: unknown[] = [];
@@ -280,7 +268,6 @@ async function fetchIntercept(url: string, opts: FetchOptions): Promise<FetchRes
 
   const context: BrowserContext = await browser.newContext({
     viewport: pick(VIEWPORTS),
-    userAgent: pick(USER_AGENTS),
     locale: "en-US",
     ignoreHTTPSErrors: true,
   });
@@ -289,7 +276,7 @@ async function fetchIntercept(url: string, opts: FetchOptions): Promise<FetchRes
 
   page.on("response", async (response) => {
     try {
-      const respUrl     = response.url();
+      const respUrl = response.url();
       const contentType = response.headers()["content-type"] ?? "";
       if (
         contentType.includes("application/json") &&
@@ -308,7 +295,7 @@ async function fetchIntercept(url: string, opts: FetchOptions): Promise<FetchRes
     await page.waitForTimeout(3000);
   }
 
-  const html     = await page.content();
+  const html = await page.content();
   const finalUrl = page.url();
   await browser.close();
 
@@ -324,90 +311,52 @@ async function fetchIntercept(url: string, opts: FetchOptions): Promise<FetchRes
   };
 }
 
-// ─── Auto fetch (tiered: Axios → Playwright fallback) ─────────────────────────
-//
-// Decision tree:
-//   1. Try Axios (fast, ~100ms)
-//   2. Check HTTP status:
-//      - 403 / 429 / 503 → blocked, escalate to Playwright immediately
-//   3. Run JS-render detection on the response HTML:
-//      - Any signal → escalate to Playwright
-//   4. If Axios threw a network error → escalate to Playwright
-//   5. Otherwise → return Axios result directly (no browser needed)
+// ── Auto: got-scraping → Playwright fallback ──────────────────────────────────
 
 async function fetchAuto(url: string, opts: FetchOptions): Promise<FetchResult> {
   const timeout = opts.timeoutMs ?? 15_000;
 
-  // Stage 1: Axios attempt
-  let axiosResult: FetchResult | null = null;
-  let axiosError: unknown = null;
+  let fastResult: FetchResult | null = null;
+  let fastError: unknown = null;
 
   try {
-    axiosResult = await fetchFast(url, timeout, opts.proxy);
+    fastResult = await fetchFast(url, timeout, opts.proxy);
   } catch (err) {
-    axiosError = err;
+    fastError = err;
   }
 
-  // Stage 2: Decide whether to escalate
-  if (axiosResult) {
-    // Blocked by WAF / rate limit
-    const blocked = [403, 429, 503].includes(axiosResult.statusCode ?? 0);
+  if (fastResult) {
+    const blocked = [403, 429, 503].includes(fastResult.statusCode ?? 0);
     if (blocked) {
-      console.log(` → HTTP ${axiosResult.statusCode} — escalating to stealth browser`);
+      console.log(` → HTTP ${fastResult.statusCode} — escalating to stealth browser`);
       const stealthResult = await fetchStealth(url, opts);
       return { ...stealthResult, usedFallback: true };
     }
 
-    // JS-render detection
-    const signal = detectJSRender(axiosResult.html);
+    const signal = detectJSRender(fastResult.html);
     if (signal.triggered) {
       console.log(` → JS render detected (${signal.reason}) — escalating to stealth browser`);
       const stealthResult = await fetchStealth(url, opts);
       return { ...stealthResult, usedFallback: true };
     }
 
-    // Static page — return Axios result directly
-    return axiosResult;
+    return fastResult;
   }
 
-  // Stage 3: Axios threw — escalate
-  console.log(` → Axios failed (${(axiosError as Error)?.message ?? "unknown"}) — escalating to stealth browser`);
+  console.log(` → got-scraping failed (${(fastError as Error)?.message ?? "unknown"}) — escalating to stealth browser`);
   const stealthResult = await fetchStealth(url, opts);
   return { ...stealthResult, usedFallback: true };
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────────
+// ── Public API ────────────────────────────────────────────────────────────────
 
 export async function fetchPage(url: string, opts: FetchOptions = {}): Promise<FetchResult> {
   const mode = opts.mode ?? "auto";
-
-  // ── Proxy rotation ──────────────────────────────────────────────────────
-  // If the caller didn't pin a proxy, pull one from the rotating pool.
-  // We then report the outcome so banned/slow proxies cool down automatically.
-  let leasedProxy: string | null = null;
-  if (!opts.proxy && proxyPool.enabled) {
-    leasedProxy = proxyPool.acquire(url);
-    if (leasedProxy) opts = { ...opts, proxy: leasedProxy };
-  }
-
-  const run = (): Promise<FetchResult> => {
-    switch (mode) {
-      case "fast":      return fetchFast(url, opts.timeoutMs ?? 15_000, opts.proxy);
-      case "stealth":   return fetchStealth(url, opts);
-      case "intercept": return fetchIntercept(url, opts);
-      case "auto":
-      default:          return fetchAuto(url, opts);
-    }
-  };
-
-  if (!leasedProxy) return run();
-
-  try {
-    const result = await run();
-    proxyPool.report(leasedProxy, classifyOutcome(result.statusCode, result.html), result.durationMs);
-    return result;
-  } catch (err) {
-    proxyPool.report(leasedProxy, "error");
-    throw err;
+  switch (mode) {
+    case "fast":      return fetchFast(url, opts.timeoutMs ?? 15_000, opts.proxy);
+    case "stealth":   return fetchStealth(url, opts);
+    case "intercept": return fetchIntercept(url, opts);
+    case "auto":
+    default:          return fetchAuto(url, opts);
   }
 }
