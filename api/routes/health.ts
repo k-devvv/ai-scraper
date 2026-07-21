@@ -1,4 +1,5 @@
 import { FastifyInstance } from "fastify";
+import { version as pkgVersion } from "../../package.json";
 
 export async function healthRoute(fastify: FastifyInstance): Promise<void> {
   fastify.get(
@@ -72,7 +73,7 @@ export async function healthRoute(fastify: FastifyInstance): Promise<void> {
         redis: redisStatus,
         database: dbStatus,
         uptime: Math.round(process.uptime()),
-        version: "3.1.0",
+        version: pkgVersion,
         timestamp: new Date().toISOString(),
       });
     }
