@@ -86,46 +86,46 @@ ollama pull qwen2.5:7b
 
 ### Single URL
 ```bash
-npx tsx cli.ts scrape <url> <schema> [flags]
+npx tsx src/cli.ts scrape <url> <schema> [flags]
 
-npx tsx cli.ts scrape https://n8n.io/pricing pricing --output=json,csv
-npx tsx cli.ts scrape https://blog.n8n.io/ai-agents-examples/ saas_ideas
+npx tsx src/cli.ts scrape https://n8n.io/pricing pricing --output=json,csv
+npx tsx src/cli.ts scrape https://blog.n8n.io/ai-agents-examples/ saas_ideas
 ```
 
 ### Deep Crawl — follows links recursively
 ```bash
-npx tsx cli.ts crawl <url> <schema> [flags]
+npx tsx src/cli.ts crawl <url> <schema> [flags]
 
 # AI agent ideas from n8n blog (20 pages, depth 2)
-npx tsx cli.ts crawl https://blog.n8n.io saas_ideas --pages=20 --depth=2 --output=json,csv
+npx tsx src/cli.ts crawl https://blog.n8n.io saas_ideas --pages=20 --depth=2 --output=json,csv
 
 # Product Hunt AI agents category
-npx tsx cli.ts crawl https://www.producthunt.com/topics/ai-agents saas_ideas --pages=30
+npx tsx src/cli.ts crawl https://www.producthunt.com/topics/ai-agents saas_ideas --pages=30
 
 # There's An AI For That directory
-npx tsx cli.ts crawl https://theresanaiforthat.com saas_ideas --pages=50 --delay=1000
+npx tsx src/cli.ts crawl https://theresanaiforthat.com saas_ideas --pages=50 --delay=1000
 ```
 
 ### Sitemap — fastest for large sites
 ```bash
-npx tsx cli.ts sitemap <url> <schema> [flags]
+npx tsx src/cli.ts sitemap <url> <schema> [flags]
 
-npx tsx cli.ts sitemap https://n8n.io saas_ideas --include=/blog/ --pages=30 --output=json,csv
-npx tsx cli.ts sitemap https://www.ycombinator.com blog --include=/blog/ --pages=20
+npx tsx src/cli.ts sitemap https://n8n.io saas_ideas --include=/blog/ --pages=30 --output=json,csv
+npx tsx src/cli.ts sitemap https://www.ycombinator.com blog --include=/blog/ --pages=20
 ```
 
 ### Batch — multiple URLs in one shot
 ```bash
-npx tsx cli.ts batch <url1,url2,...> <schema> [flags]
+npx tsx src/cli.ts batch <url1,url2,...> <schema> [flags]
 
 # Compare SaaS pricing pages
-npx tsx cli.ts batch https://n8n.io/pricing,https://make.com/en/pricing,https://zapier.com/pricing pricing --output=json,csv,markdown
+npx tsx src/cli.ts batch https://n8n.io/pricing,https://make.com/en/pricing,https://zapier.com/pricing pricing --output=json,csv,markdown
 ```
 
 ### Markdown only — no AI, fastest
 ```bash
-npx tsx cli.ts markdown <url>
-npx tsx cli.ts markdown https://blog.n8n.io/ai-agents-examples/
+npx tsx src/cli.ts markdown <url>
+npx tsx src/cli.ts markdown https://blog.n8n.io/ai-agents-examples/
 ```
 
 ---
@@ -169,7 +169,7 @@ export const SCHEMA_MAP = {
 
 Then:
 ```bash
-npx tsx cli.ts crawl https://example.com my_schema --pages=20
+npx tsx src/cli.ts crawl https://example.com my_schema --pages=20
 ```
 
 ---
@@ -217,19 +217,19 @@ Scraping `https://n8n.io/pricing` with the `pricing` schema:
 
 ```bash
 # n8n blog — enterprise automation deep dives
-npx tsx cli.ts crawl https://blog.n8n.io saas_ideas --pages=30 --depth=2 --output=json,csv
+npx tsx src/cli.ts crawl https://blog.n8n.io saas_ideas --pages=30 --depth=2 --output=json,csv
 
 # There's An AI For That — AI product directory
-npx tsx cli.ts crawl https://theresanaiforthat.com saas_ideas --pages=50 --delay=1000
+npx tsx src/cli.ts crawl https://theresanaiforthat.com saas_ideas --pages=50 --delay=1000
 
 # Product Hunt AI Agents
-npx tsx cli.ts crawl "https://www.producthunt.com/topics/ai-agents" saas_ideas --pages=20
+npx tsx src/cli.ts crawl "https://www.producthunt.com/topics/ai-agents" saas_ideas --pages=20
 
 # YC blog — startup ideas and trends
-npx tsx cli.ts sitemap https://www.ycombinator.com blog --include=/blog/ --pages=25 --output=json,csv
+npx tsx src/cli.ts sitemap https://www.ycombinator.com blog --include=/blog/ --pages=25 --output=json,csv
 
 # Make.com use cases
-npx tsx cli.ts sitemap https://www.make.com saas_ideas --include=/use-cases/ --pages=30
+npx tsx src/cli.ts sitemap https://www.make.com saas_ideas --include=/use-cases/ --pages=30
 ```
 
 ---

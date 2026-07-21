@@ -84,6 +84,26 @@ export class ProxyPool {
     this.proxies = this.proxies.filter((p) => p.url !== url);
   }
 
+  /** Count of healthy manual proxies currently in rotation */
+  healthyCount(): number {
+    return this.proxies.filter((p) => p.healthy && p.failures < MAX_FAILURES).length;
+  }
+
+  /**
+   * Synchronous round-robin over healthy manual proxies only.
+   * Used by the fetchPage() lease path, which cannot await Tor bootstrap.
+   * Returns null when no manual proxy is available (caller goes direct,
+   * or uses Tor via the async next() path / explicit opts.proxy).
+   */
+  nextSync(): string | null {
+    const healthy = this.proxies.filter((p) => p.healthy && p.failures < MAX_FAILURES);
+    if (healthy.length === 0) return null;
+    const proxy = healthy[this.currentIndex % healthy.length];
+    this.currentIndex = (this.currentIndex + 1) % healthy.length;
+    proxy.lastUsed = Date.now();
+    return proxy.url;
+  }
+
   /** Get the next available proxy URL (round-robin with health filtering) */
   async next(): Promise<string | null> {
     // Try manual proxies first (round-robin)
@@ -166,3 +186,50 @@ export class ProxyPool {
     }
   }
 }
+
+// ─── Fetcher-facing facade ────────────────────────────────────────────────────
+// fetchPage() leases a proxy per request and reports the outcome so banned or
+// flaky proxies cool down automatically. Kept as a thin wrapper over the
+// ProxyPool singleton so the API routes (which use ProxyPool directly) and the
+// fetcher share one pool state.
+
+export type ProxyOutcome = "success" | "banned" | "error";
+
+/**
+ * Classify a fetch result for proxy health reporting.
+ *  - 403 / 429, or block-page markers in the body → "banned"
+ *  - 2xx/3xx with normal content                  → "success"
+ *  - anything else (5xx, null status, thrown)     → "error"
+ */
+export function classifyOutcome(statusCode: number | null, html?: string): ProxyOutcome {
+  if (statusCode === 403 || statusCode === 429) return "banned";
+
+  if (statusCode !== null && statusCode >= 200 && statusCode < 400) {
+    const head = (html ?? "").slice(0, 4000);
+    if (/access denied|attention required|are you a (?:human|robot)|captcha|request blocked|unusual traffic/i.test(head)) {
+      return "banned";
+    }
+    return "success";
+  }
+
+  return "error";
+}
+
+export const proxyPool = {
+  /** True when at least one healthy manual proxy is in rotation */
+  get enabled(): boolean {
+    return ProxyPool.getInstance().healthyCount() > 0;
+  },
+
+  /** Lease the next healthy manual proxy (sync round-robin). Null = go direct. */
+  acquire(_url: string): string | null {
+    return ProxyPool.getInstance().nextSync();
+  },
+
+  /** Report the outcome of a leased request back to the pool */
+  report(url: string, outcome: ProxyOutcome, _durationMs?: number): void {
+    const pool = ProxyPool.getInstance();
+    if (outcome === "success") pool.markSuccess(url);
+    else pool.markFailed(url);
+  },
+};

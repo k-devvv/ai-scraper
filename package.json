@@ -4,16 +4,16 @@
   "description": "Production-grade scraper: TLS spoof + Tor rotation + Stealth Playwright + Ollama AI",
   "type": "commonjs",
   "scripts": {
-    "scrape": "npx tsx src/cli-v2.ts scrape",
-    "batch": "npx tsx src/cli-v2.ts batch",
-    "crawl": "npx tsx src/cli-v2.ts crawl",
-    "sitemap": "npx tsx src/cli-v2.ts sitemap",
+    "scrape": "npx tsx src/cli.ts scrape",
+    "crawl": "npx tsx src/cli.ts crawl",
+    "sitemap": "npx tsx src/cli.ts sitemap",
     "start:api": "npx tsx api/server.ts",
     "start:api:prod": "node -r dotenv/config dist/api/server.js",
     "build": "tsc --project tsconfig.build.json",
     "test": "npx vitest run",
     "test:watch": "npx vitest",
-    "test:coverage": "npx vitest run --coverage"
+    "test:coverage": "npx vitest run --coverage",
+    "batch": "npx tsx src/cli.ts batch"
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",

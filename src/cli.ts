@@ -8,6 +8,7 @@
  *   scrape <url> <schema> [options] — scrape a single URL
  *   crawl <url> <schema> [options] — deep crawl from a seed URL
  *   sitemap <url> <schema> [options] — scrape all URLs from sitemap
+ *   batch <url1,url2,...> <schema> [options] — scrape multiple URLs in parallel
  *
  * Options:
  *   --mode=cheerio|hybrid|ai   extraction mode (default: hybrid)
@@ -106,6 +107,58 @@ if (command === "scrape") {
       if (err instanceof Error && err.stack) console.error(err.stack);
       process.exit(1);
     }
+  })();
+}
+
+// ─── batch ────────────────────────────────────────────────────────────────────
+
+else if (command === "batch") {
+  const urlList = args[1];
+  const schema  = args[2];
+
+  if (!urlList || !schema) {
+    console.error("Usage: npx tsx src/cli.ts batch <url1,url2,...> <schema> [--concurrency=2] [--output=json,csv]");
+    process.exit(1);
+  }
+
+  const urls = urlList.split(",").map((u) => u.trim()).filter(Boolean);
+  const mode          = flag("mode", "hybrid") as PipelineMode;
+  const outputFormats = flag("output", "json").split(",");
+  const model         = flag("model", "qwen2.5:7b");
+  const threshold     = parseInt(flag("threshold", "70"), 10);
+  const concurrency   = parseInt(flag("concurrency", "2"), 10);
+
+  console.log("\n" + "═".repeat(60));
+  console.log(` Scraper v3 — Batch (${urls.length} URLs, concurrency ${concurrency})`);
+  console.log(` Schema: ${schema} | Mode: ${mode}`);
+  console.log("═".repeat(60) + "\n");
+
+  (async () => {
+    const pLimit = (await import("p-limit")).default;
+    const limit = pLimit(concurrency);
+
+    const results = await Promise.all(
+      urls.map((url) =>
+        limit(async () => {
+          try {
+            const r = await runPipeline(url, { schema, mode, model, hybridThreshold: threshold, verbose: false });
+            console.log(` ✓ ${url} — ${r.confidence}% via ${r.method} (${r.totalMs}ms)`);
+            return { url, data: r.data, confidence: r.confidence };
+          } catch (err) {
+            console.error(` ✗ ${url} — ${err instanceof Error ? err.message : err}`);
+            return null;
+          }
+        })
+      )
+    );
+
+    const ok = results.filter((r): r is NonNullable<typeof r> => r !== null);
+    console.log(`\nDone: ${ok.length}/${urls.length} succeeded`);
+
+    if (ok.length > 0) {
+      await saveOutput(ok, schema, outputFormats, path.join(outputDir, `batch_${timestamp()}`));
+    }
+    process.exit(ok.length > 0 ? 0 : 1);
   })();
 }
 
