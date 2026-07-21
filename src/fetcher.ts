@@ -15,32 +15,82 @@
  *   auto      — smart tiered: Axios → Playwright fallback (RECOMMENDED)
  */
 
-import axios from "axios";
-import type { AxiosProxyConfig } from "axios";
+import { gotScraping } from "got-scraping";
 import { chromium } from "playwright-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
+import { detectBlock, type BlockSignal } from "./block-detector";
 import type { Browser, BrowserContext, Page } from "playwright";
 import { proxyPool, classifyOutcome } from "./lib/proxy-pool";
 
 chromium.use(StealthPlugin());
 
-/** Build an Axios proxy config from a proxy URL. Returns false to disable. */
-function axiosProxy(proxyUrl?: string): AxiosProxyConfig | false {
-  if (!proxyUrl) return false;
-  try {
-    const u = new URL(proxyUrl);
-    if (!u.protocol.startsWith("http")) return false; // socks → Playwright only
-    return {
-      protocol: u.protocol.replace(":", ""),
-      host: u.hostname,
-      port: parseInt(u.port || "80", 10),
-      ...(u.username
-        ? { auth: { username: decodeURIComponent(u.username), password: decodeURIComponent(u.password) } }
-        : {}),
-    };
-  } catch {
-    return false;
-  }
+/**
+ * Coherent browser personas. The whole point: every layer must AGREE. A
+ * randomized User-Agent with a mismatched Accept-Language, platform, or
+ * client-hint set is a STRONGER bot signal than an honest client, because it
+ * signals deliberate spoofing. Each persona bundles a UA with the exact headers
+ * and client hints a real instance of that browser/OS sends together.
+ *
+ * got-scraping generates a real browser TLS/JA3 fingerprint automatically; these
+ * personas make the HTTP layer coherent with that so the two don't contradict.
+ */
+interface Persona {
+  userAgent: string;
+  acceptLanguage: string;
+  platform: string;        // navigator.platform
+  secChUa: string;         // Sec-CH-UA client hint
+  secChUaPlatform: string; // Sec-CH-UA-Platform
+  viewport: { width: number; height: number };
+  timezone: string;
+}
+
+const PERSONAS: Persona[] = [
+  {
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    acceptLanguage: "en-US,en;q=0.9",
+    platform: "Win32",
+    secChUa: '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+    secChUaPlatform: '"Windows"',
+    viewport: { width: 1920, height: 1080 },
+    timezone: "America/New_York",
+  },
+  {
+    userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    acceptLanguage: "en-US,en;q=0.9",
+    platform: "MacIntel",
+    secChUa: '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+    secChUaPlatform: '"macOS"',
+    viewport: { width: 1440, height: 900 },
+    timezone: "America/Los_Angeles",
+  },
+  {
+    userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    acceptLanguage: "en-US,en;q=0.9",
+    platform: "Linux x86_64",
+    secChUa: '"Chromium";v="123", "Google Chrome";v="123", "Not-A.Brand";v="99"',
+    secChUaPlatform: '"Linux"',
+    viewport: { width: 1536, height: 864 },
+    timezone: "America/Chicago",
+  },
+];
+
+/** Build the coherent header set for a persona (used by the got-scraping fast path). */
+function personaHeaders(p: Persona): Record<string, string> {
+  return {
+    "User-Agent": p.userAgent,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": p.acceptLanguage,
+    "Accept-Encoding": "gzip, deflate, br",
+    "sec-ch-ua": p.secChUa,
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": p.secChUaPlatform,
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Upgrade-Insecure-Requests": "1",
+    "Connection": "keep-alive",
+  };
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -94,6 +144,8 @@ export interface FetchResult {
   usedFallback: boolean;       // ← true when auto-mode escalated to Playwright
   interceptedJson?: unknown[];
   durationMs: number;
+  /** Set when an anti-bot block or CAPTCHA was detected in the final response. */
+  block?: BlockSignal;
 }
 
 // ─── JS-render detection ──────────────────────────────────────────────────────
@@ -165,42 +217,74 @@ export function detectJSRender(html: string): JsRenderSignal {
   return { triggered: false, reason: "static" };
 }
 
-// ─── Fast fetch (Axios) ───────────────────────────────────────────────────────
+// ─── Fast fetch (got-scraping — real browser TLS/JA3 fingerprint) ─────────────
+//
+// got-scraping mimics a real Chrome TLS handshake + header ordering, so the
+// connection fingerprint (JA3/JA4) looks like a browser rather than Node. We
+// pair it with a coherent Persona so the HTTP layer agrees with the TLS layer —
+// mismatched layers are a stronger bot signal than an honest client.
 
 async function fetchFast(url: string, timeoutMs: number, proxy?: string): Promise<FetchResult> {
   const start = Date.now();
+  const persona = pick(PERSONAS);
+
   try {
-    const res = await axios.get<string>(url, {
-      headers: { ...AXIOS_HEADERS, "User-Agent": pick(USER_AGENTS) },
-      timeout: timeoutMs,
-      maxRedirects: 5,
-      responseType: "text",
-      proxy: axiosProxy(proxy),
-    });
+    const res = await gotScraping({
+      url,
+      timeout: { request: timeoutMs },
+      retry: { limit: 0 },
+      followRedirect: true,
+      throwHttpErrors: false, // handle 4xx/5xx as results, not exceptions
+      ...(proxy && proxy.startsWith("http") ? { proxyUrl: proxy } : {}),
+      // Let got-scraping generate a coherent browser fingerprint (UA + client
+      // hints + Accept-Language + TLS/JA3 all matching). We keep the constraint
+      // loose — over-constraining header-generator makes it fail to produce a
+      // set. Desktop Chrome is the default direction.
+      useHeaderGenerator: true,
+      headerGeneratorOptions: {
+        browsers: ["chrome"],
+        devices: ["desktop"],
+        operatingSystems: ["windows", "macos", "linux"],
+      },
+    } as Record<string, unknown>);
+
     return {
-      html: res.data,
-      finalUrl: (res.request as any)?.res?.responseUrl ?? url,
-      statusCode: res.status,
+      html: typeof res.body === "string" ? res.body : String(res.body ?? ""),
+      finalUrl: res.url ?? url,
+      statusCode: res.statusCode ?? null,
       mode: "fast",
       fetchMode: "fast",
       usedFallback: false,
       durationMs: Date.now() - start,
     };
   } catch (err: unknown) {
-    const e = err as { response?: { status: number; data: string } };
+    // got-scraping throws error objects that carry a `response` for HTTP errors
+    // (still usable — return the body/status) and none for transport/timeout
+    // failures (re-throw so auto-mode escalates to the stealth browser). We
+    // detect by shape rather than importing error classes, because got-scraping
+    // re-exports them at runtime but doesn't surface them in its type defs.
+    const e = err as { response?: { body?: unknown; url?: string; statusCode?: number } };
     if (e.response) {
+      const resp = e.response;
       return {
-        html: e.response.data ?? "",
-        finalUrl: url,
-        statusCode: e.response.status,
+        html: typeof resp.body === "string" ? resp.body : "",
+        finalUrl: resp.url ?? url,
+        statusCode: resp.statusCode ?? null,
         mode: "fast",
         fetchMode: "fast",
         usedFallback: false,
         durationMs: Date.now() - start,
       };
     }
-    throw err;
+    throw err; // transport failure / timeout — let auto-mode escalate
   }
+}
+
+/** Map a persona to got-scraping's OS string for header generation. */
+function personaOs(p: Persona): string {
+  if (p.platform === "Win32") return "windows";
+  if (p.platform === "MacIntel") return "macos";
+  return "linux";
 }
 
 // ─── Stealth fetch (Playwright) ───────────────────────────────────────────────
@@ -361,12 +445,22 @@ async function fetchAuto(url: string, opts: FetchOptions): Promise<FetchResult> 
 
   // Stage 2: Decide whether to escalate
   if (axiosResult) {
+    const block = detectBlock(axiosResult.html, axiosResult.statusCode);
+
+    // Interactive CAPTCHA — a browser will NOT pass it. Report honestly, don't
+    // waste a stealth escalation trying to crack something a human must solve.
+    if (block.blocked && block.kind === "interactive") {
+      console.log(` → ${block.reason} — cannot bypass; returning blocked result`);
+      return { ...axiosResult, block };
+    }
+
     // Blocked by WAF / rate limit
-    const blocked = [403, 429, 503].includes(axiosResult.statusCode ?? 0);
+    const blocked = [403, 429, 503].includes(axiosResult.statusCode ?? 0) || block.kind === "soft";
     if (blocked) {
-      console.log(` → HTTP ${axiosResult.statusCode} — escalating to stealth browser`);
+      console.log(` → ${block.reason ?? `HTTP ${axiosResult.statusCode}`} — escalating to stealth browser`);
       const stealthResult = await fetchStealth(url, opts);
-      return { ...stealthResult, usedFallback: true };
+      const stealthBlock = detectBlock(stealthResult.html, stealthResult.statusCode);
+      return { ...stealthResult, usedFallback: true, block: stealthBlock.blocked ? stealthBlock : undefined };
     }
 
     // JS-render detection
