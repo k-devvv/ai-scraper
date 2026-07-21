@@ -60,8 +60,13 @@ server.registerTool(
     inputSchema: {
       url: z.string().url().describe("The URL to scrape"),
       schema: z
-        .enum(SCHEMA_NAMES as [string, ...string[]])
-        .describe("Extraction schema — call list_schemas to see all options"),
+        .string()
+        .describe(
+          "What to extract. Either a built-in schema name (call list_schemas for the list, " +
+          "e.g. 'product', 'pricing', 'article') OR a plain-English description of the fields " +
+          "you want, e.g. 'founder name, funding amount, and launch year'. " +
+          "A description generates a custom schema on the fly via the local LLM."
+        ),
       mode: z
         .enum(EXTRACT_MODES)
         .optional()
@@ -88,11 +93,21 @@ server.registerTool(
     if (blocked) return blocked;
 
     try {
+      // If `schema` exactly matches a built-in name, use the preset.
+      // Otherwise treat it as a natural-language description and generate a schema.
+      const isBuiltIn = SCHEMA_NAMES.includes(schema);
+      let nlSchema;
+      if (!isBuiltIn) {
+        const { schemaFromDescription } = await import("../src/nl-schema");
+        nlSchema = await schemaFromDescription(schema, model ?? "qwen2.5:7b");
+      }
+
       const r = await runPipeline(url, {
-        schema,
+        schema: isBuiltIn ? schema : "custom",
         mode: mode ?? "hybrid",
         fetchMode: fetchMode ?? "auto",
         ...(model ? { model } : {}),
+        ...(nlSchema ? { nlSchema } : {}),
       });
       const structured = {
         url: r.url,

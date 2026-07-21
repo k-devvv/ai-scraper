@@ -1,0 +1,14 @@
+Custom natural-language schemas — CLI + MCP
+
+NEW:
+  src/nl-schema.ts       LLM turns plain English → JSON schema (was PR1, never pushed)
+
+CHANGED:
+  src/pipeline.ts        + optional nlSchema on PipelineOptions (overrides preset, forces AI mode)
+  src/cli.ts             + --extract "plain english" flag on scrape/crawl/batch/sitemap
+  mcp/server.ts          scrape tool: schema field now accepts a built-in name OR a
+                         free-text description (was locked to 8-name enum). Exact match
+                         to a built-in → preset; otherwise → schemaFromDescription.
+
+APPLY: extract over project (no new deps), then:
+  npx tsc --noEmit && npx vitest run   (expect 205/205)

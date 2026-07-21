@@ -12,6 +12,7 @@ import { fetchPage } from "./fetcher";
 import { htmlToMarkdown } from "./cleaner";
 import { extractWithCheerio } from "./extractor-cheerio";
 import { extractWithOllama } from "./extractor";
+import type { OllamaSchema } from "./extractor";
 import { SCHEMA_RULES } from "./selectors";
 import { SCHEMA_MAP } from "./schemas";
 
@@ -25,6 +26,8 @@ export interface PipelineOptions {
   verbose?: boolean;
   proxy?: string;
   fetchMode?: "auto" | "fast" | "stealth" | "intercept";
+  /** Pre-built schema from a natural-language request; overrides `schema` and forces AI mode. */
+  nlSchema?: OllamaSchema;
 }
 
 export interface PipelineResult {
@@ -53,7 +56,8 @@ export async function runPipeline(
   opts: PipelineOptions
 ): Promise<PipelineResult> {
   const start     = Date.now();
-  const mode      = opts.mode ?? "hybrid";
+  // A natural-language schema has no Cheerio rule set, so force AI.
+  const mode      = opts.nlSchema ? "ai" : (opts.mode ?? "hybrid");
   const model     = opts.model ?? "qwen2.5:7b";
   const threshold = opts.hybridThreshold ?? 70;
   const verbose   = opts.verbose ?? false;
@@ -171,8 +175,8 @@ async function runAiExtraction(
   startTime: number,
   verbose: boolean
 ): Promise<PipelineResult> {
-  // ← fixed: use SCHEMA_LOOKUP (Record<string, …>) not SCHEMA_MAP (const) — TS7053
-  let schema = SCHEMA_LOOKUP[opts.schema];
+  // Natural-language schema wins over any preset lookup.
+  let schema = opts.nlSchema ?? SCHEMA_LOOKUP[opts.schema];
   if (!schema) {
     schema = buildDynamicSchema(opts.schema);
   }

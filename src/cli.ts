@@ -40,6 +40,17 @@ function flag(name: string, defaultVal: string): string {
 }
 
 const outputDir = "output";
+
+async function resolveNlSchema(model: string) {
+  const desc = flag("extract", "");
+  if (!desc) return undefined;
+  const { schemaFromDescription } = await import("./nl-schema");
+  console.log(`\n🧠 Generating schema from: "${desc}"`);
+  const schema = await schemaFromDescription(desc, model);
+  const fields = Object.keys((schema.input_schema as { properties: object }).properties);
+  console.log(`   → fields: ${fields.join(", ")}\n`);
+  return schema;
+}
 if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
 
 function timestamp(): string {
@@ -84,7 +95,8 @@ if (command === "scrape") {
 
   (async () => {
     try {
-      const result = await runPipeline(url, { schema, mode, model, hybridThreshold: threshold, verbose: true });
+      const nlSchema = await resolveNlSchema(model);
+      const result = await runPipeline(url, { schema, mode, model, hybridThreshold: threshold, verbose: true, nlSchema });
 
       console.log("\n─── EXTRACTED DATA " + "─".repeat(42));
       console.log(JSON.stringify(result.data, null, 2));
@@ -135,13 +147,14 @@ else if (command === "batch") {
 
   (async () => {
     const pLimit = (await import("p-limit")).default;
+    const nlSchema = await resolveNlSchema(model);
     const limit = pLimit(concurrency);
 
     const results = await Promise.all(
       urls.map((url) =>
         limit(async () => {
           try {
-            const r = await runPipeline(url, { schema, mode, model, hybridThreshold: threshold, verbose: false });
+            const r = await runPipeline(url, { schema, mode, model, hybridThreshold: threshold, verbose: false, nlSchema });
             console.log(` ✓ ${url} — ${r.confidence}% via ${r.method} (${r.totalMs}ms)`);
             return { url, data: r.data, confidence: r.confidence };
           } catch (err) {
@@ -191,7 +204,9 @@ else if (command === "crawl") {
 
   (async () => {
     try {
+      const nlSchema = await resolveNlSchema(model);
       const summary = await crawl(seedUrl, {
+        nlSchema,
         schema, mode, model, hybridThreshold: threshold,
         maxDepth, maxPages, concurrency, delayMs, verbose: true,
       });
@@ -255,6 +270,7 @@ else if (command === "sitemap") {
 
   (async () => {
     try {
+      const nlSchema = await resolveNlSchema(model);
       console.log("[1/3] Discovering URLs from sitemap...");
       let urls = await parseSitemap(siteUrl);
       console.log(` → Found ${urls.length} URLs`);
@@ -276,7 +292,7 @@ else if (command === "sitemap") {
           const num = i + batch.indexOf(url) + 1;
           process.stdout.write(` [${num}/${urls.length}] ${url.slice(0, 80)}...`);
           try {
-            const result = await runPipeline(url, { schema, mode, model, hybridThreshold: threshold });
+            const result = await runPipeline(url, { schema, mode, model, hybridThreshold: threshold, nlSchema });
             console.log(` ✓ ${result.confidence}% (${result.method})`);
             allData.push({ url, data: result.data, confidence: result.confidence });
             success++;
